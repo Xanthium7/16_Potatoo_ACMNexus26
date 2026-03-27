@@ -1,0 +1,11 @@
+{
+    "name": "copy-express",
+    "version": "1.0.0",
+    "description": "A scratch-built, unlicensed clone of the Express API",
+    "main": "index.js",
+    "scripts": {
+        "test": "node test_express.js"
+    },
+    "author": "Your Name",
+    "license": "UNLICENSED"
+}

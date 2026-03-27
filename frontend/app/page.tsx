@@ -4,11 +4,59 @@ import TopNav from "@/components/TopNav";
 import { Upload, ArrowRight, ShieldCheck, AlertTriangle, Scale, Heart } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-
+import { extractPackageName } from "@/utils/package_name_parser";
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [result, setResult] = useState<{message: string, download_url: string} | null>(null);
+  const [packageName, setPackageName] = useState("");
+  
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async(e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          setSelectedFile(file);
+          setIsGenerating(true);
+          // You can trigger router.push or API calls here
+
+           const text = await file.text(); 
+          console.log("File content:", text);
+          const package_name = extractPackageName(text);
+          
+          setPackageName(package_name);
+           console.log("Extracted package name:", package_name);
+
+
+           const res = await fetch(`http://localhost:8000/generate?package_name=${package_name}`,{
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+           });
+           const data = await res.json();
+           console.log("Generation response:", data);
+           setResult(data);
+           setIsGenerating(false);
+      }
+      
+      // Clear input so the same file can be selected again
+      if (e.target) {
+          e.target.value = '';
+      }
+  };
+
+  const handleDownload = () => {
+      // Use the dynamically stored packageName to download the ZIP file
+      if (packageName) {
+          window.open(`http://localhost:8000/download/${packageName}`, '_self');
+      } else if (result?.download_url) {
+          window.open(result.download_url, '_self');
+      }
+  };
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -221,38 +269,125 @@ export default function Home() {
                   } p-12 md:p-16 flex flex-col items-center justify-center text-center transition-all duration-200 cursor-pointer group relative`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setIsDragging(false); }}
+                onDrop={(e) => { 
+                  e.preventDefault(); 
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file && file.name.endsWith('.json')) {
+                      setSelectedFile(file);
+                      setIsGenerating(true);
+                  }
+                }}
               >
-                {/* Visual Flair */}
-                <div className="absolute top-[-30px] left-[-30px] w-20 h-20 border-3 border-black bg-brutal-yellow flex items-center justify-center shadow-brutal-sm rotate-[-15deg]">
-                  <Upload size={32} strokeWidth={3} />
-                </div>
-                <div className="absolute bottom-[-15px] right-[10%] px-5 py-2.5 border-3 border-black bg-brutal-pink font-black text-[10px] uppercase tracking-[0.3em] rotate-[5deg] shadow-brutal-sm">
-                  Drop it here ✦
-                </div>
+                {result ? (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center justify-center py-8"
+                  >
+                    <div className="w-24 h-24 bg-brutal-green border-4 border-black rounded-full flex items-center justify-center mb-6 shadow-brutal-sm">
+                      <ShieldCheck className="w-12 h-12 text-black" />
+                    </div>
+                    <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-4 leading-none text-black">
+                      {result.message}
+                    </h3>
+                    <p className="text-sm font-black text-black/50 tracking-[0.2em] uppercase border-2 border-black/10 px-4 py-2 bg-black/5 mb-8">
+                      {selectedFile?.name || "package.json"}
+                    </p>
+                    <button 
+                      onClick={handleDownload}
+                      className="bg-brutal-cyan text-black px-8 py-4 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95 inline-flex items-center gap-3"
+                    >
+                      <Upload className="rotate-180 w-5 h-5 flex-shrink-0" /> Download Package
+                    </button>
+                    
+                    <button 
+                      onClick={() => {
+                        setResult(null);
+                        setSelectedFile(null);
+                        setIsGenerating(false);
+                      }}
+                      className="mt-8 text-[10px] font-black uppercase tracking-widest text-black/40 hover:text-black transition-colors"
+                    >
+                      Process Another File
+                    </button>
+                  </motion.div>
+                ) : !isGenerating ? (
+                  <>
+                    {/* Visual Flair */}
+                    <div className="absolute top-[-30px] left-[-30px] w-20 h-20 border-3 border-black bg-brutal-yellow flex items-center justify-center shadow-brutal-sm rotate-[-15deg]">
+                      <Upload size={32} strokeWidth={3} />
+                    </div>
+                    <div className="absolute bottom-[-15px] right-[10%] px-5 py-2.5 border-3 border-black bg-brutal-pink font-black text-[10px] uppercase tracking-[0.3em] rotate-[5deg] shadow-brutal-sm">
+                      Drop it here ✦
+                    </div>
 
-                <h3 className="text-4xl md:text-5xl lg:text-7xl font-black text-black tracking-tighter mb-4 uppercase leading-none">
-                  Unleash your<br />manifest
-                </h3>
-                <p className="text-black/50 text-base md:text-lg lg:text-xl max-w-xl mb-10 font-bold leading-tight">
-                  Drag and drop your protocols. Our isolated agents will parse, abstract, and rebuild your implementation in real-time.
-                </p>
+                    <h3 className="text-4xl md:text-5xl lg:text-7xl font-black text-black tracking-tighter mb-4 uppercase leading-none">
+                      Unleash your<br />manifest
+                    </h3>
+                    <p className="text-black/50 text-base md:text-lg lg:text-xl max-w-xl mb-10 font-bold leading-tight">
+                      Drag and drop your protocols. Our isolated agents will parse, abstract, and rebuild your implementation in real-time.
+                    </p>
 
-                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
-                  <button className="flex-1 bg-black text-white px-8 py-5 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-cyan hover:text-black hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95">
-                    Select File
-                  </button>
-                  <div className="hidden sm:flex items-center justify-center px-6 border-4 border-black bg-white shadow-brutal-sm font-black text-[10px] uppercase">
-                    Max 250MB
-                  </div>
-                </div>
+                    <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 bg-black text-white px-8 py-5 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-cyan hover:text-black hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95"
+                      >
+                        Select File
+                      </button>
+                      <input
+                        type="file"
+                        accept=".json"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <div className="hidden sm:flex items-center justify-center px-6 border-4 border-black bg-white shadow-brutal-sm font-black text-[10px] uppercase">
+                        Max 250MB
+                      </div>
+                    </div>
 
-                <div className="mt-10 flex items-center gap-6 opacity-20 filter grayscale scale-90">
-                  <ShieldCheck size={28} />
-                  <Scale size={28} />
-                  <AlertTriangle size={28} />
-                  <Heart size={28} />
-                </div>
+                    <div className="mt-10 flex items-center gap-6 opacity-20 filter grayscale scale-90">
+                      <ShieldCheck size={28} />
+                      <Scale size={28} />
+                      <AlertTriangle size={28} />
+                      <Heart size={28} />
+                    </div>
+                  </>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center justify-center py-8"
+                  >
+                    <div className="relative w-28 h-28 mb-8">
+                      <motion.div className="absolute inset-0 border-[6px] border-black/10 rounded-full" />
+                      <motion.div 
+                        className="absolute inset-0 border-[6px] border-transparent border-t-brutal-cyan border-r-brutal-pink rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Upload size={36} strokeWidth={2.5} className="text-black animate-pulse" />
+                      </div>
+                    </div>
+                    <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-4 leading-none">
+                      Generating legal code
+                    </h3>
+                    <p className="text-sm font-black text-black/50 tracking-[0.2em] uppercase border-2 border-black/10 px-4 py-2 bg-black/5">
+                      {selectedFile?.name || "package.json"}
+                    </p>
+                    <div className="mt-8 w-64 h-3 bg-black/10 border-2 border-black overflow-hidden relative">
+                      <motion.div
+                        className="h-full bg-brutal-yellow border-r-2 border-black"
+                        initial={{ width: "0%" }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 4, ease: "easeInOut" }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           </div>

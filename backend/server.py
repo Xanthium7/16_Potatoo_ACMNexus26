@@ -2,11 +2,21 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import FileResponse
 from utils.buddle_utils import zip_folder, cleanup_files
 import os
-
+from fastapi.middleware.cors import CORSMiddleware
 from agent_pipeline import run_pipeline
 app = FastAPI()
 
-
+#CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/")
 async def home():
     return {"message": "Server is running hahahaha", "status": "online"}

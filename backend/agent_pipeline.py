@@ -126,6 +126,7 @@ async def run_pipeline(package_name: str):
         with open(os.path.join(codespace_dir, "package.json"), "w", encoding="utf-8") as f:
             json.dump(output["package_json"], f, indent=2)
 
+        
         print(f"\n✅ Files saved to codespace/{package_name}/")
         print(f"   - codespace/{package_name}/index.js")
         print(f"   - codespace/{package_name}/package.json")

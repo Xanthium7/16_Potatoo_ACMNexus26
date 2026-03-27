@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ccNetViz Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .canvas-container {
+            width: 800px;
+            height: 600px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        p {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ccNetViz Demo</h1>
+    <p>A visual test page for the dareal-ccNetViz clone. Scroll to zoom, drag to pan.</p>
+    
+    <div class="canvas-container">
+        <canvas id="networkCanvas"></canvas>
+    </div>
+    <div id="logArea" style="width: 800px; height: 150px; overflow-y: scroll; background: #222; color: #0f0; padding: 10px; font-family: monospace; margin-top: 10px;"></div>
+
+    <script>
+        const logArea = document.getElementById('logArea');
+        function logMsg(msg) {
+            logArea.innerHTML += msg + "<br>";
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+        console.log = function() { logMsg("[INFO] " + Array.from(arguments).join(" ")); };
+        console.error = function() { logMsg("[ERROR] " + Array.from(arguments).join(" ")); };
+        console.warn = function() { logMsg("[WARN] " + Array.from(arguments).join(" ")); };
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            logMsg("[ONERROR] " + msg + " at " + lineNo + ":" + columnNo);
+            return false;
+        };
+        var module = {};
+    </script>
+    <script src="./index.js"></script>
+    <script>
+        try {
+            logMsg("Starting initialization...");
+            const ccNetViz = module.exports;
+            if (!ccNetViz) {
+                logMsg("[CRITICAL] module.exports is undefined!");
+            }
+            
+            const canvas = document.getElementById('networkCanvas');
+            logMsg("Canvas dimensions before init: " + canvas.clientWidth + "x" + canvas.clientHeight);
+            const graph = new ccNetViz(canvas, {
+                styles: { background: { color: 'rgb(240, 240, 240)' } }
+            });
+
+            const nodes = [];
+            for (let i = 0; i < 30; i++) {
+                nodes.push({ 
+                    label: "N" + i,
+                    // use valid css-like internal color strings
+                    color: 'rgb(200, 50, 50)',
+                    // explicitly set x and y in the middle of the 1000x1000 graph space
+                    // Default viewport size is 0.5, so it views x=250..750 and y=250..750
+                    x: 350 + Math.random() * 300, 
+                    y: 350 + Math.random() * 300 
+                });
+            }
+            
+            const edges = [];
+            for (let i = 0; i < 40; i++) {
+                let s = Math.floor(Math.random() * 30);
+                let t = Math.floor(Math.random() * 30);
+                edges.push({ source: nodes[s], target: nodes[t] });
+            }
+
+            // Do not pass 'predefined' because it forces randomly assigning coordinates again!
+            graph.set(nodes, edges).then(() => {
+                logMsg("Graph rendered! Nodes: " + graph.cntShownNodes() + ", Edges: " + graph.cntShownEdges());
+                logMsg("First node position: x=" + nodes[0].x.toFixed(2) + ", y=" + nodes[0].y.toFixed(2));
+                
+                // Draw a debug rectangle to verify canvas context state
+                const ctx = canvas.getContext('2d');
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to canvas space
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(10, 10, 50, 50);
+                ctx.restore();
+                logMsg("Drew a manual blue rectangle at 10,10.");
+            }).catch(err => {
+                logMsg("[ERROR] Graph set failed: " + err);
+            });
+        } catch(e) {
+            logMsg("[CRITICAL ERROR] " + e.message);
+        }
+    </script>
+</body>
+</html>

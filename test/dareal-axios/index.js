@@ -346,262 +346,262 @@ class AxiosHeaders {
 
   /**
    * Internal helper to parse a raw HTTP header string.
-   * @param {string} headerString - The raw header string (e.g., "Content-Type: application/json\nAccept: */*").
-   * @returns {object} A plain object of parsed headers.
+   * @param {string} headerString - The raw header string (e.g., "Content-Type: application/json\\nAccept: text/html").
+   * @returns { object } A plain object of parsed headers.
    */
-  _parseHeaderString(headerString) {
+_parseHeaderString(headerString) {
+  const parsed = {};
+  if (!isString(headerString)) return parsed;
+  headerString.split('\n').forEach(line => {
+    const parts = line.split(':');
+    if (parts.length > 1) {
+      const key = parts[0].trim();
+      const value = parts.slice(1).join(':').trim();
+      parsed[key] = value;
+    }
+  });
+  return parsed;
+}
+
+/**
+ * Sets a header value or merges multiple headers.
+ * @param {string | object | AxiosHeaders} headerName - The header name or an object/AxiosHeaders to merge.
+ * @param {string | null | false | undefined | Function} [value] - The header value.
+ * @param {boolean | Function} [rewrite=undefined] - Overwrite behavior.
+ * @returns {AxiosHeaders} The instance for chaining.
+ */
+set(headerName, value, rewrite = undefined) {
+  if (isObject(headerName) || headerName instanceof AxiosHeaders) {
+    const sourceHeaders = headerName instanceof AxiosHeaders ? headerName.toJSON() : headerName;
+    for (const key in sourceHeaders) {
+      if (Object.prototype.hasOwnProperty.call(sourceHeaders, key)) {
+        // When bulk setting, 'value' parameter acts as 'rewrite' for individual headers
+        this.set(key, sourceHeaders[key], value);
+      }
+    }
+    return this;
+  }
+
+  if (!isString(headerName)) {
+    return this;
+  }
+
+  const lowerCaseName = headerName.toLowerCase();
+  storeHeaderCasing(headerName); // Store original casing
+
+  const currentEntry = this._headers.get(lowerCaseName);
+  const currentValue = currentEntry ? currentEntry.value : undefined;
+
+  // Determine if overwrite should happen
+  let shouldRewrite = rewrite;
+  if (isFunction(rewrite)) {
+    shouldRewrite = rewrite(currentValue, headerName, this._headers);
+  } else if (isUndefined(rewrite)) { // Default behavior
+    shouldRewrite = value !== false; // Overwrite unless new value is explicitly false
+  }
+
+  if (shouldRewrite || isUndefined(currentValue)) {
+    if (value === null || value === false || isUndefined(value)) {
+      this._headers.delete(lowerCaseName); // Remove header if value is null/false/undefined
+    } else {
+      this._headers.set(lowerCaseName, { originalKey: getHeaderCasing(headerName), value: value });
+    }
+  }
+  return this;
+}
+
+/**
+ * Retrieves the value of a header, optionally parsing it.
+ * @param {string} headerName - The name of the header.
+ * @param {boolean | RegExp | Function} [matcher] - Parsing/transformation option.
+ * @returns {*} The header value, potentially parsed.
+ */
+get(headerName, matcher = undefined) {
+  if (!isString(headerName)) {
+    return undefined;
+  }
+  const lowerCaseName = headerName.toLowerCase();
+  const entry = this._headers.get(lowerCaseName);
+  let value = entry ? entry.value : undefined;
+
+  if (isFunction(matcher)) {
+    value = matcher(value, headerName, this._headers);
+  } else if (matcher instanceof RegExp) {
+    value = isString(value) ? matcher.exec(value) : null;
+  } else if (matcher === true && isString(value)) {
+    // Basic key-value pair parsing (e.g., "key1=val1; key2=val2")
     const parsed = {};
-    if (!isString(headerString)) return parsed;
-    headerString.split('\n').forEach(line => {
-      const parts = line.split(':');
-      if (parts.length > 1) {
-        const key = parts[0].trim();
-        const value = parts.slice(1).join(':').trim();
-        parsed[key] = value;
-      }
+    value.split(';').forEach(part => {
+      const [key, val] = part.split('=').map(s => s.trim());
+      if (key && val) parsed[key] = val;
     });
-    return parsed;
+    value = parsed;
   }
+  return value;
+}
 
-  /**
-   * Sets a header value or merges multiple headers.
-   * @param {string | object | AxiosHeaders} headerName - The header name or an object/AxiosHeaders to merge.
-   * @param {string | null | false | undefined | Function} [value] - The header value.
-   * @param {boolean | Function} [rewrite=undefined] - Overwrite behavior.
-   * @returns {AxiosHeaders} The instance for chaining.
-   */
-  set(headerName, value, rewrite = undefined) {
-    if (isObject(headerName) || headerName instanceof AxiosHeaders) {
-      const sourceHeaders = headerName instanceof AxiosHeaders ? headerName.toJSON() : headerName;
-      for (const key in sourceHeaders) {
-        if (Object.prototype.hasOwnProperty.call(sourceHeaders, key)) {
-          // When bulk setting, 'value' parameter acts as 'rewrite' for individual headers
-          this.set(key, sourceHeaders[key], value); 
-        }
-      }
-      return this;
-    }
-
-    if (!isString(headerName)) {
-      return this;
-    }
-
-    const lowerCaseName = headerName.toLowerCase();
-    storeHeaderCasing(headerName); // Store original casing
-
-    const currentEntry = this._headers.get(lowerCaseName);
-    const currentValue = currentEntry ? currentEntry.value : undefined;
-
-    // Determine if overwrite should happen
-    let shouldRewrite = rewrite;
-    if (isFunction(rewrite)) {
-      shouldRewrite = rewrite(currentValue, headerName, this._headers);
-    } else if (isUndefined(rewrite)) { // Default behavior
-      shouldRewrite = value !== false; // Overwrite unless new value is explicitly false
-    }
-
-    if (shouldRewrite || isUndefined(currentValue)) {
-      if (value === null || value === false || isUndefined(value)) {
-        this._headers.delete(lowerCaseName); // Remove header if value is null/false/undefined
-      } else {
-        this._headers.set(lowerCaseName, { originalKey: getHeaderCasing(headerName), value: value });
-      }
-    }
-    return this;
+/**
+ * Checks if a header is set (i.e., its value is not undefined).
+ * @param {string} headerName - The name of the header.
+ * @param {Function} [matcher] - An optional function to match against the header value.
+ * @returns {boolean}
+ */
+has(headerName, matcher = undefined) {
+  if (!isString(headerName)) {
+    return false;
   }
+  const lowerCaseName = headerName.toLowerCase();
+  const entry = this._headers.get(lowerCaseName);
+  if (!entry || isUndefined(entry.value)) {
+    return false;
+  }
+  if (isFunction(matcher)) {
+    return matcher(entry.value, headerName, this._headers);
+  }
+  return true;
+}
 
-  /**
-   * Retrieves the value of a header, optionally parsing it.
-   * @param {string} headerName - The name of the header.
-   * @param {boolean | RegExp | Function} [matcher] - Parsing/transformation option.
-   * @returns {*} The header value, potentially parsed.
-   */
-  get(headerName, matcher = undefined) {
-    if (!isString(headerName)) {
-      return undefined;
-    }
-    const lowerCaseName = headerName.toLowerCase();
+/**
+ * Removes one or more headers.
+ * @param {string | Array<string>} headerNames - The name(s) of the header(s) to remove.
+ * @param {Function} [matcher] - Optional function to match against the header value for deletion.
+ * @returns {boolean} True if at least one header was removed.
+ */
+delete (headerNames, matcher = undefined) {
+  let removed = false;
+  const names = Array.isArray(headerNames) ? headerNames : [headerNames];
+  names.forEach(name => {
+    if (!isString(name)) return;
+    const lowerCaseName = name.toLowerCase();
     const entry = this._headers.get(lowerCaseName);
-    let value = entry ? entry.value : undefined;
-
-    if (isFunction(matcher)) {
-      value = matcher(value, headerName, this._headers);
-    } else if (matcher instanceof RegExp) {
-      value = isString(value) ? matcher.exec(value) : null;
-    } else if (matcher === true && isString(value)) {
-      // Basic key-value pair parsing (e.g., "key1=val1; key2=val2")
-      const parsed = {};
-      value.split(';').forEach(part => {
-        const [key, val] = part.split('=').map(s => s.trim());
-        if (key && val) parsed[key] = val;
-      });
-      value = parsed;
-    }
-    return value;
-  }
-
-  /**
-   * Checks if a header is set (i.e., its value is not undefined).
-   * @param {string} headerName - The name of the header.
-   * @param {Function} [matcher] - An optional function to match against the header value.
-   * @returns {boolean}
-   */
-  has(headerName, matcher = undefined) {
-    if (!isString(headerName)) {
-      return false;
-    }
-    const lowerCaseName = headerName.toLowerCase();
-    const entry = this._headers.get(lowerCaseName);
-    if (!entry || isUndefined(entry.value)) {
-      return false;
-    }
-    if (isFunction(matcher)) {
-      return matcher(entry.value, headerName, this._headers);
-    }
-    return true;
-  }
-
-  /**
-   * Removes one or more headers.
-   * @param {string | Array<string>} headerNames - The name(s) of the header(s) to remove.
-   * @param {Function} [matcher] - Optional function to match against the header value for deletion.
-   * @returns {boolean} True if at least one header was removed.
-   */
-  delete(headerNames, matcher = undefined) {
-    let removed = false;
-    const names = Array.isArray(headerNames) ? headerNames : [headerNames];
-    names.forEach(name => {
-      if (!isString(name)) return;
-      const lowerCaseName = name.toLowerCase();
-      const entry = this._headers.get(lowerCaseName);
-      if (entry) {
-        if (isFunction(matcher) && !matcher(entry.value, name, this._headers)) {
-          return; // Don't delete if matcher returns false
-        }
-        this._headers.delete(lowerCaseName);
-        removed = true;
+    if (entry) {
+      if (isFunction(matcher) && !matcher(entry.value, name, this._headers)) {
+        return; // Don't delete if matcher returns false
       }
-    });
-    return removed;
-  }
-
-  /**
-   * Removes all headers, optionally filtered by a matcher.
-   * @param {Function} [matcher] - Optional function that receives a header name and returns true to clear.
-   * @returns {boolean} True if at least one header was cleared.
-   */
-  clear(matcher = undefined) {
-    let cleared = false;
-    if (!matcher) {
-      if (this._headers.size > 0) {
-        this._headers.clear();
-        cleared = true;
-      }
-    } else if (isFunction(matcher)) {
-      const keysToDelete = [];
-      this._headers.forEach((entry, lowerCaseName) => {
-        if (matcher(entry.originalKey)) {
-          keysToDelete.push(lowerCaseName);
-        }
-      });
-      keysToDelete.forEach(key => {
-        this._headers.delete(key);
-        cleared = true;
-      });
+      this._headers.delete(lowerCaseName);
+      removed = true;
     }
-    return cleared;
-  }
+  });
+  return removed;
+}
 
-  /**
-   * Normalizes the headers by combining duplicate keys (case-insensitive) and retaining the last value.
-   * Optionally formats header names to canonical form (e.g., 'content-type' -> 'Content-Type').
-   * @param {boolean} [format=false] - If true, converts header names to canonical form.
-   * @returns {AxiosHeaders} The instance for chaining.
-   */
-  normalize(format = false) {
-    const normalized = new Map();
-    const originalOrderEntries = Array.from(this._headers.entries()); 
-
-    originalOrderEntries.forEach(([lowerCaseName, entry]) => {
-      let keyToUse = entry.originalKey;
-      if (format) {
-        keyToUse = this._canonicalizeHeaderName(entry.originalKey);
-      }
-      
-      // Overwrite if key already exists (last one wins for canonical name)
-      normalized.set(keyToUse.toLowerCase(), { originalKey: keyToUse, value: entry.value });
-      storeHeaderCasing(keyToUse); // Update casing map
-    });
-    this._headers = normalized;
-    return this;
-  }
-
-  /**
-   * Internal helper to convert a header name to canonical HTTP header casing (e.g., 'Content-Type').
-   * @param {string} name - The header name.
-   * @returns {string} The canonicalized header name.
-   */
-  _canonicalizeHeaderName(name) {
-    return name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join('-');
-  }
-
-  /**
-   * Merges the current `AxiosHeaders` instance with one or more target header objects into a new instance.
-   * @param {...(AxiosHeaders | object | string | undefined | null)} targets - Headers to merge.
-   * @returns {AxiosHeaders} A new `AxiosHeaders` instance.
-   */
-  concat(...targets) {
-    const newHeaders = new AxiosHeaders();
-    // Start with current headers, explicitly copy them
+/**
+ * Removes all headers, optionally filtered by a matcher.
+ * @param {Function} [matcher] - Optional function that receives a header name and returns true to clear.
+ * @returns {boolean} True if at least one header was cleared.
+ */
+clear(matcher = undefined) {
+  let cleared = false;
+  if (!matcher) {
+    if (this._headers.size > 0) {
+      this._headers.clear();
+      cleared = true;
+    }
+  } else if (isFunction(matcher)) {
+    const keysToDelete = [];
     this._headers.forEach((entry, lowerCaseName) => {
-      newHeaders._headers.set(lowerCaseName, { ...entry });
-    });
-
-    targets.forEach(target => {
-      if (!target) return; // Ignore null/undefined
-
-      let source;
-      if (target instanceof AxiosHeaders) {
-        source = target.toJSON();
-      } else if (isObject(target)) {
-        source = target;
-      } else if (isString(target)) {
-        source = new AxiosHeaders()._parseHeaderString(target);
-      } else {
-        return; // Ignore other types
-      }
-
-      for (const key in source) {
-        if (Object.prototype.hasOwnProperty.call(source, key)) {
-          newHeaders.set(key, source[key], true); // Merge, always overwrite
-        }
+      if (matcher(entry.originalKey)) {
+        keysToDelete.push(lowerCaseName);
       }
     });
-    return newHeaders;
+    keysToDelete.forEach(key => {
+      this._headers.delete(key);
+      cleared = true;
+    });
   }
+  return cleared;
+}
 
-  /**
-   * Resolves all internal header values into a new plain object with string values, suitable for network.
-   * @param {boolean} [asStrings=false] - If true, array values are joined by commas.
-   * @returns {object} A plain object of headers.
-   */
-  toJSON(asStrings = false) {
-    const obj = {};
-    this._headers.forEach(entry => {
-      let value = entry.value;
-      if (value === null || value === false || isUndefined(value)) {
-        return; // Skip null/false/undefined headers
+/**
+ * Normalizes the headers by combining duplicate keys (case-insensitive) and retaining the last value.
+ * Optionally formats header names to canonical form (e.g., 'content-type' -> 'Content-Type').
+ * @param {boolean} [format=false] - If true, converts header names to canonical form.
+ * @returns {AxiosHeaders} The instance for chaining.
+ */
+normalize(format = false) {
+  const normalized = new Map();
+  const originalOrderEntries = Array.from(this._headers.entries());
+
+  originalOrderEntries.forEach(([lowerCaseName, entry]) => {
+    let keyToUse = entry.originalKey;
+    if (format) {
+      keyToUse = this._canonicalizeHeaderName(entry.originalKey);
+    }
+
+    // Overwrite if key already exists (last one wins for canonical name)
+    normalized.set(keyToUse.toLowerCase(), { originalKey: keyToUse, value: entry.value });
+    storeHeaderCasing(keyToUse); // Update casing map
+  });
+  this._headers = normalized;
+  return this;
+}
+
+/**
+ * Internal helper to convert a header name to canonical HTTP header casing (e.g., 'Content-Type').
+ * @param {string} name - The header name.
+ * @returns {string} The canonicalized header name.
+ */
+_canonicalizeHeaderName(name) {
+  return name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join('-');
+}
+
+/**
+ * Merges the current `AxiosHeaders` instance with one or more target header objects into a new instance.
+ * @param {...(AxiosHeaders | object | string | undefined | null)} targets - Headers to merge.
+ * @returns {AxiosHeaders} A new `AxiosHeaders` instance.
+ */
+concat(...targets) {
+  const newHeaders = new AxiosHeaders();
+  // Start with current headers, explicitly copy them
+  this._headers.forEach((entry, lowerCaseName) => {
+    newHeaders._headers.set(lowerCaseName, { ...entry });
+  });
+
+  targets.forEach(target => {
+    if (!target) return; // Ignore null/undefined
+
+    let source;
+    if (target instanceof AxiosHeaders) {
+      source = target.toJSON();
+    } else if (isObject(target)) {
+      source = target;
+    } else if (isString(target)) {
+      source = new AxiosHeaders()._parseHeaderString(target);
+    } else {
+      return; // Ignore other types
+    }
+
+    for (const key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        newHeaders.set(key, source[key], true); // Merge, always overwrite
       }
-      if (Array.isArray(value)) {
-        obj[entry.originalKey] = asStrings ? value.join(',') : value.map(String);
-      } else if (isObject(value) && !isString(value)) { // Plain objects (not stringified)
-        obj[entry.originalKey] = String(value); // Convert to string
-      } else {
-        obj[entry.originalKey] = String(value); // Ensure all values are strings
-      }
-    });
-    return obj;
-  }
+    }
+  });
+  return newHeaders;
+}
+
+/**
+ * Resolves all internal header values into a new plain object with string values, suitable for network.
+ * @param {boolean} [asStrings=false] - If true, array values are joined by commas.
+ * @returns {object} A plain object of headers.
+ */
+toJSON(asStrings = false) {
+  const obj = {};
+  this._headers.forEach(entry => {
+    let value = entry.value;
+    if (value === null || value === false || isUndefined(value)) {
+      return; // Skip null/false/undefined headers
+    }
+    if (Array.isArray(value)) {
+      obj[entry.originalKey] = asStrings ? value.join(',') : value.map(String);
+    } else if (isObject(value) && !isString(value)) { // Plain objects (not stringified)
+      obj[entry.originalKey] = String(value); // Convert to string
+    } else {
+      obj[entry.originalKey] = String(value); // Ensure all values are strings
+    }
+  });
+  return obj;
+}
 
   /**
    * Static factory method to create an `AxiosHeaders` instance from raw headers.
@@ -609,11 +609,11 @@ class AxiosHeaders {
    * @returns {AxiosHeaders} A new or existing `AxiosHeaders` instance.
    */
   static from(thing) {
-    if (thing instanceof AxiosHeaders) {
-      return thing;
-    }
-    return new AxiosHeaders(thing);
+  if (thing instanceof AxiosHeaders) {
+    return thing;
   }
+  return new AxiosHeaders(thing);
+}
 
   /**
    * Static factory method to create a new `AxiosHeaders` instance by merging multiple targets.
@@ -621,9 +621,9 @@ class AxiosHeaders {
    * @returns {AxiosHeaders} A new `AxiosHeaders` instance.
    */
   static concat(...targets) {
-    const newHeaders = new AxiosHeaders();
-    return newHeaders.concat(...targets);
-  }
+  const newHeaders = new AxiosHeaders();
+  return newHeaders.concat(...targets);
+}
 }
 
 // --- Interceptor Manager ---
@@ -700,7 +700,7 @@ function browserAdapter(config) {
     if (config.baseURL) {
       const isAbsoluteURL = /^([a-z][a-z\d\+\-\.]{1,5}:)?\/\//i.test(url); // Regex for absolute URLs (e.g., http://, //, file://)
       if (!isAbsoluteURL || config.allowAbsoluteUrls === false) {
-         url = config.baseURL + url;
+        url = config.baseURL + url;
       }
     }
 
@@ -718,12 +718,12 @@ function browserAdapter(config) {
 
     // Basic Auth header if 'auth' config is present and not explicitly set in headers
     if (config.auth && !config.headers.has('Authorization')) {
-        const username = config.auth.username || '';
-        const password = config.auth.password || '';
-        // Using btoa for base64 encoding, only available in browsers
-        if (typeof btoa === 'function') {
-          xhr.setRequestHeader('Authorization', 'Basic ' + btoa(`${username}:${password}`));
-        }
+      const username = config.auth.username || '';
+      const password = config.auth.password || '';
+      // Using btoa for base64 encoding, only available in browsers
+      if (typeof btoa === 'function') {
+        xhr.setRequestHeader('Authorization', 'Basic ' + btoa(`${username}:${password}`));
+      }
     }
 
     // XSRF protection (simplified: if withXSRFToken is true, check cookie and set header)
@@ -772,7 +772,7 @@ function browserAdapter(config) {
     }
 
     // 5. Event Handlers
-    xhr.ontimeout = function() {
+    xhr.ontimeout = function () {
       if (abortController) abortController.removeEventListener('abort', handleAbortController);
       reject(new AxiosError(
         `timeout of ${config.timeout}ms exceeded`,
@@ -782,7 +782,7 @@ function browserAdapter(config) {
       ));
     };
 
-    xhr.onerror = function() {
+    xhr.onerror = function () {
       // xhr.status is 0 for network errors (including CORS/Mixed Content)
       if (abortController) abortController.removeEventListener('abort', handleAbortController);
       reject(new AxiosError(
@@ -793,7 +793,7 @@ function browserAdapter(config) {
       ));
     };
 
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) {
         return;
       }
@@ -812,14 +812,14 @@ function browserAdapter(config) {
 
       // Data transformation based on responseType and Content-Type
       const responseContentType = responseHeaders.get('content-type');
-      if (config.responseType === 'json' || (config.responseType === 'text' && responseContentType && responseContentType.toLowerCase().includes('json')) || (config.transitional && config.transitional.forcedJSONParsing && responseContentType && !responseContentType.toLowerCase().includes('json')) ) {
+      if (config.responseType === 'json' || (config.responseType === 'text' && responseContentType && responseContentType.toLowerCase().includes('json')) || (config.transitional && config.transitional.forcedJSONParsing && responseContentType && !responseContentType.toLowerCase().includes('json'))) {
         try {
           responseData = JSON.parse(xhr.responseText);
         } catch (e) {
           // Handle JSON parsing errors based on transitional options
           if (!config.transitional || !config.transitional.silentJSONParsing) {
-             // Default: pass raw text if parsing fails (and not silent)
-             responseData = xhr.responseText;
+            // Default: pass raw text if parsing fails (and not silent)
+            responseData = xhr.responseText;
           } else {
             // silentJSONParsing: just pass raw text without error
             responseData = xhr.responseText;
@@ -843,7 +843,7 @@ function browserAdapter(config) {
       };
 
       // Validate status
-      const validateStatus = config.validateStatus || function(status) {
+      const validateStatus = config.validateStatus || function (status) {
         return status >= 200 && status < 300;
       };
 
@@ -866,7 +866,7 @@ function browserAdapter(config) {
     const progressLimit = 1000 / 3; // Max 3 times per second
 
     if (config.onUploadProgress) {
-      xhr.upload.onprogress = function(event) {
+      xhr.upload.onprogress = function (event) {
         const now = Date.now();
         if (now - lastUploadProgressUpdate > progressLimit || event.loaded === event.total) {
           lastUploadProgressUpdate = now;
@@ -885,7 +885,7 @@ function browserAdapter(config) {
     }
 
     if (config.onDownloadProgress) {
-      xhr.onprogress = function(event) {
+      xhr.onprogress = function (event) {
         const now = Date.now();
         if (now - lastDownloadProgressUpdate > progressLimit || event.loaded === event.total) {
           lastDownloadProgressUpdate = now;
@@ -926,8 +926,8 @@ function browserAdapter(config) {
         }
       }
     } else if (isFormMethod && (requestData instanceof HTMLFormElement || requestData instanceof FileList)) {
-        // Handle direct HTML Form elements or FileList for *Form methods
-        requestData = toFormData(requestData, true);
+      // Handle direct HTML Form elements or FileList for *Form methods
+      requestData = toFormData(requestData, true);
     }
 
     xhr.send(requestData);
@@ -975,7 +975,7 @@ function nodeAdapter(config) {
       if (config.baseURL) {
         const isAbsoluteURL = /^([a-z][a-z\d\+\-\.]{1,5}:)?\/\//i.test(requestUrl);
         if (!isAbsoluteURL || config.allowAbsoluteUrls === false) {
-           requestUrl = config.baseURL + requestUrl;
+          requestUrl = config.baseURL + requestUrl;
         }
       }
       urlObj = new URL(requestUrl);
@@ -1082,7 +1082,7 @@ function nodeAdapter(config) {
 
         if (config.responseType === 'arraybuffer') {
           data = responseDataBuffer.buffer.slice(responseDataBuffer.byteOffset, responseDataBuffer.byteOffset + responseDataBuffer.byteLength); // Extract ArrayBuffer from Buffer
-        } else if (config.responseType === 'json' || (config.responseType === 'text' && responseContentType && responseContentType.toLowerCase().includes('json')) || (config.transitional && config.transitional.forcedJSONParsing && responseContentType && !responseContentType.toLowerCase().includes('json')) ) {
+        } else if (config.responseType === 'json' || (config.responseType === 'text' && responseContentType && responseContentType.toLowerCase().includes('json')) || (config.transitional && config.transitional.forcedJSONParsing && responseContentType && !responseContentType.toLowerCase().includes('json'))) {
           try {
             data = JSON.parse(responseDataBuffer.toString(responseEncoding));
           } catch (e) {
@@ -1110,7 +1110,7 @@ function nodeAdapter(config) {
           request: req,
         };
 
-        const validateStatus = config.validateStatus || function(status) {
+        const validateStatus = config.validateStatus || function (status) {
           return status >= 200 && status < 300;
         };
 
@@ -1170,12 +1170,12 @@ function nodeAdapter(config) {
     }
     // CancelToken integration for Node.js
     if (config.cancelToken) {
-       config.cancelToken.promise.then(reason => {
-           if (!req._canceled) { // Ensure only one cancellation
-               req._canceled = true;
-               req.destroy(new AxiosError(reason.message, 'ERR_CANCELED', config, req));
-           }
-       });
+      config.cancelToken.promise.then(reason => {
+        if (!req._canceled) { // Ensure only one cancellation
+          req._canceled = true;
+          req.destroy(new AxiosError(reason.message, 'ERR_CANCELED', config, req));
+        }
+      });
     }
 
     // Send request data
@@ -1193,7 +1193,7 @@ function nodeAdapter(config) {
 }
 
 // Select the appropriate default adapter based on environment
-const defaultAdapter = IS_BROWSER ? browserAdapter : (IS_NODE ? nodeAdapter : function(config) {
+const defaultAdapter = IS_BROWSER ? browserAdapter : (IS_NODE ? nodeAdapter : function (config) {
   return Promise.reject(new AxiosError('Environment not supported (neither browser nor Node.js).', 'ERR_NOT_SUPPORT', config));
 });
 
@@ -1207,7 +1207,7 @@ const defaultAdapter = IS_BROWSER ? browserAdapter : (IS_NODE ? nodeAdapter : fu
 function Axios(instanceConfig) {
   // Merge instance defaults with global defaults
   this.defaults = instanceConfig ? merge(Axios.defaults, instanceConfig) : merge({}, Axios.defaults);
-  
+
   // Initialize interceptor managers for this instance
   this.interceptors = {
     request: new InterceptorManager(),
@@ -1221,7 +1221,7 @@ function Axios(instanceConfig) {
  * @param {object} [config] - Optional configuration object (if url is provided).
  * @returns {Promise<object>} A Promise that resolves with the response.
  */
-Axios.prototype.request = function(configOrUrl, config) {
+Axios.prototype.request = function (configOrUrl, config) {
   let requestConfig = config || {};
 
   // Handle URL overload: axios(url[, config])
@@ -1300,7 +1300,7 @@ Axios.prototype.request = function(configOrUrl, config) {
 // Methods without data in body (GET, DELETE, HEAD, OPTIONS)
 const methodsNoData = ['delete', 'get', 'head', 'options'];
 methodsNoData.forEach(method => {
-  Axios.prototype[method] = function(url, config) {
+  Axios.prototype[method] = function (url, config) {
     return this.request(url, merge(config || {}, { method: method }));
   };
 });
@@ -1308,7 +1308,7 @@ methodsNoData.forEach(method => {
 // Methods with data in body (POST, PUT, PATCH)
 const methodsWithData = ['post', 'put', 'patch'];
 methodsWithData.forEach(method => {
-  Axios.prototype[method] = function(url, data, config) {
+  Axios.prototype[method] = function (url, data, config) {
     return this.request(url, merge(config || {}, { method: method, data: data }));
   };
 });
@@ -1317,7 +1317,7 @@ methodsWithData.forEach(method => {
 const methodsForm = ['postForm', 'putForm', 'patchForm'];
 methodsForm.forEach(method => {
   const baseMethod = method.slice(0, -4); // Extract 'post', 'put', 'patch'
-  Axios.prototype[method] = function(url, data, config) {
+  Axios.prototype[method] = function (url, data, config) {
     const newConfig = merge(config || {}, {
       method: baseMethod,
       data: data,
@@ -1333,7 +1333,7 @@ methodsForm.forEach(method => {
  * @param {object} [config] - Optional default configuration for the new instance.
  * @returns {Axios} A new Axios instance.
  */
-Axios.prototype.create = function(config) {
+Axios.prototype.create = function (config) {
   return new Axios(config);
 };
 
@@ -1342,7 +1342,7 @@ Axios.prototype.create = function(config) {
  * @param {object} [config] - Optional configuration to merge for URL construction.
  * @returns {string} The constructed URL.
  */
-Axios.prototype.getUri = function(config) {
+Axios.prototype.getUri = function (config) {
   const mergedConfig = merge(this.defaults, config || {});
   let url = mergedConfig.url || '';
 
@@ -1350,7 +1350,7 @@ Axios.prototype.getUri = function(config) {
   if (mergedConfig.baseURL) {
     const isAbsoluteURL = /^([a-z][a-z\d\+\-\.]{1,5}:)?\/\//i.test(url);
     if (!isAbsoluteURL || mergedConfig.allowAbsoluteUrls === false) {
-       url = mergedConfig.baseURL + url;
+      url = mergedConfig.baseURL + url;
     }
   }
 
@@ -1377,14 +1377,14 @@ Axios.defaults = {
     // E.g., post: { 'Content-Type': 'application/json' }
   },
   // Function to validate HTTP status codes
-  validateStatus: function(status) {
+  validateStatus: function (status) {
     return status >= 200 && status < 300;
   },
   // Default request data transformer: automatically JSON.stringify plain objects
   transformRequest: [(data, headers) => {
     // Only transform if it's a plain object and Content-Type isn't already set
     if (isObject(data) && !headers['Content-Type'] && !headers['content-type']) {
-        return JSON.stringify(data);
+      return JSON.stringify(data);
     }
     return data;
   }],
@@ -1416,7 +1416,7 @@ const axios = new Axios();
 extend(axios, Axios.prototype, axios);
 
 // Add static methods and properties to the default `axios` object
-axios.create = function(config) {
+axios.create = function (config) {
   return new Axios(config);
 };
 axios.isCancel = isCancel;

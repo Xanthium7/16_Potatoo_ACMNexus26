@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Room AI Platform</title>
+    <meta name="description" content="A demonstration of the un-licensed dareal-express framework.">
+    <!-- Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Premium Aesthetics & Glassmorphism Design System */
+        :root {
+            --bg-grad-1: #0f172a;
+            --bg-grad-2: #312e81;
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #34d399;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 4rem 3rem;
+            width: 90%;
+            max-width: 650px;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, #38bdf8, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: gradientShift 5s linear infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        p {
+            font-weight: 300;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2.5rem;
+            color: var(--text-muted);
+        }
+
+        .interactive-box {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .interactive-box:hover {
+            transform: scale(1.02);
+        }
+
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 14px 32px;
+            font-size: 1.1rem;
+            font-family: inherit;
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            background: var(--accent-hover);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+        }
+
+        #responseBox {
+            margin-top: 1.5rem;
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--success);
+            min-height: 24px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Clean Room AI Core</h1>
+        <p>This premium website relies exclusively on our scratch-built independent micro-framework. It flawlessly demonstrates native HTML integration, browser rendering styles, and underlying API logic without exploiting external module dependencies.</p>
+        
+        <div class="interactive-box">
+            <button id="pingBtn">Initialize API Discovery</button>
+            <div id="responseBox">Initializing...</div>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('pingBtn').addEventListener('click', () => {
+            const box = document.getElementById('responseBox');
+            box.style.opacity = '1';
+            box.style.color = 'var(--accent)';
+            box.innerText = 'Dispatching secure request to framework core...';
+            
+            // Execute the connection hitting our clone's custom API endpoint!
+            fetch('/api/ping')
+                .then(res => res.json())
+                .then(data => {
+                    setTimeout(() => {
+                        box.style.color = 'var(--success)';
+                        box.innerText = `[${data.time}] Success! Server replied: "${data.message}"`;
+                    }, 400); // Artificial delay to let the user see the dynamic animation states!
+                })
+                .catch(err => {
+                    box.style.color = '#ef4444'; // Red error
+                    box.innerText = 'Connection disrupted. Check console logs.';
+                    console.error(err);
+                });
+        });
+    </script>
+</body>
+</html>

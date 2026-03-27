@@ -1,0 +1,7 @@
+{
+  "name": "dareal-chalk",
+  "version": "1.0.0",
+  "description": "A private chainable terminal styling library mimicking chalk",
+  "main": "index.js",
+  "private": true
+}

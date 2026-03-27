@@ -19,7 +19,7 @@ async def download(package_name: str, background_tasks: BackgroundTasks):
     if not os.path.exists(zip_path):
         return {"error": "File not found"}
 
-   # background_tasks.add_task(cleanup_files, package_name)
+    background_tasks.add_task(cleanup_files, package_name)
 
     return FileResponse(
         zip_path,

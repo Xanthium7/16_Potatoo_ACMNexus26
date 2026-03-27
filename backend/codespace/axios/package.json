@@ -1,9 +1,0 @@
-{
-  "name": "liberated-axios",
-  "version": "1.0.0",
-  "description": "Clean room implementation of axios",
-  "main": "index.js",
-  "license": "Proprietary",
-  "author": "Clean Room Engineer (AI)",
-  "keywords": []
-}

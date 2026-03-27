@@ -27,19 +27,14 @@ async def download(package_name: str, background_tasks: BackgroundTasks):
         media_type="application/zip"
     )
 
-
-
 # POST route to receive package name and return zip
 @app.post("/generate")
 async def generate(package_name: str):
     """Receive package name and return zipped package"""
 
-    # WRITE LOGIC TO CALL THE AGENTS
-    print("here iam flag ",package_name, flush=True)
-    print("here iam flag 0 ",flush=True)
-
+    # WRITE LOGIC TO CALL THE AGENT
     run_pipeline(package_name=package_name)
-    print("here iam flag 1 ")
+
     # Construct folder path
     folder_path = os.path.join("./codespace", f"{package_name}")
     

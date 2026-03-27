@@ -77,3 +77,32 @@
 
 ### Issues Faced
 - FastAPI not installed in venv — resolved by running `pip install -r requirements.txt` inside venv
+
+## 23:40
+
+### Features Added
+- Refactored backend: replaced `main.py` with `server.py` — cleaner FastAPI server with separate `/generate` (POST) and `/download/{package_name}` (GET) endpoints
+- Extracted bundle utilities into `utils/buddle_utils.py` — `zip_folder()` and `cleanup_files()` with background task cleanup after download
+- Built full Next.js frontend (`frontend/`) with TypeScript
+  - Main page (`app/page.tsx`) with package name input UI
+  - Upload page (`app/upload/`) for package.json file upload
+  - Sidebar navigation component (`components/Sidebar.tsx`)
+  - Top navigation component (`components/TopNav.tsx`)
+- Successfully tested clean room pipeline on `express`, `socket.io`, and `ccNetViz` packages
+
+### Files Modified
+- backend/server.py (NEW — replaces main.py)
+- backend/utils/__init__.py (NEW)
+- backend/utils/buddle_utils.py (NEW)
+- backend/main.py (DELETED)
+- frontend/app/page.tsx (NEW)
+- frontend/app/layout.tsx (NEW)
+- frontend/app/globals.css (NEW)
+- frontend/app/upload/ (NEW)
+- frontend/components/Sidebar.tsx (NEW)
+- frontend/components/TopNav.tsx (NEW)
+- frontend/package.json (NEW)
+- frontend/.gitignore (NEW)
+
+### Issues Faced
+- None

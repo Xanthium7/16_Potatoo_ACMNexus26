@@ -23,16 +23,20 @@ A **16-hour hackathon** across various domains where innovation meets execution.
 
 ```md
 ### 🏷️ Project Name:
-<Your Project Name>
+Annexa
 
 ### 🎯 Chosen Domain:
-<One from the given domains>
+ Cybersecurity & Adaptive Threat Intelligence
 
 ### ❗ Problem Statement:
-<What problem are you solving?>
+Detecting Anomalous Behavior in Digital Systems
+Modern digital systems generate vast volumes of activity logs, within which malicious behavior can often remain hidden. Static detection approaches struggle to keep up with evolving threat patterns.
+
+Objective:
+Design a system that can analyze activity patterns and surface unusual or suspicious behavior. The solution should demonstrate the ability to adapt to varying patterns and highlight potential threats.
 
 ### 💡 Solution:
-<How does your project solve the problem?>
+To address the challenge of detecting anomalous behavior in modern digital systems, we propose an AI-driven adaptive threat intelligence framework inspired by the clean-room engineering paradigm. The system leverages two distinct AI agents: a “dirty developer” agent that analyzes licensed or existing cybersecurity models to extract high-level functional requirements related to anomaly detection, and a “clean developer” agent that independently synthesizes a novel detection system without direct exposure to proprietary implementations.In short, we are using AI agents to make software licensing obselete.
 ```
 
 ---

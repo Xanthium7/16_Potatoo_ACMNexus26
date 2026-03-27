@@ -168,8 +168,8 @@ You can:
 ---
 
 💡 Tip:
-Instructions are already included in `AGENTS.md`.
-You can simply prompt it to **"CREATE CHANGELOG"** to follow the format.
+Instructions are already included in `AGENTS.md`...
+You can simply prompt it to **"CREATE CHANGELOG"** to follow the same format.
 
 ---
 

@@ -5,12 +5,5 @@
   "main": "index.js",
   "license": "Proprietary",
   "author": "Clean Room Engineer (AI)",
-  "keywords": [
-    "axios",
-    "http",
-    "client",
-    "fetch",
-    "xhr",
-    "promise"
-  ]
+  "keywords": []
 }

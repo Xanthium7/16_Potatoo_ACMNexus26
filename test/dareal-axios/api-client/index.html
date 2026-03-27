@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A practical REST API client built with dareal-axios.">
+  <title>API Nexus - Built with dareal-axios</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="background-blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <main class="app-container">
+    <header class="app-header">
+      <div class="logo">
+        <i data-lucide="zap" class="logo-icon"></i>
+        <h1>Nexus Client</h1>
+      </div>
+      <p class="subtitle">Powered by <span>dareal-axios</span></p>
+    </header>
+
+    <div class="glass-panel main-panel">
+      <!-- Request Builder -->
+      <form id="request-form">
+        <div class="request-bar">
+          <div class="method-selector">
+            <select id="req-method" aria-label="HTTP Method">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+            <i data-lucide="chevron-down" class="select-icon"></i>
+          </div>
+          
+          <div class="url-input-group">
+            <input type="url" id="req-url" placeholder="https://api.example.com/v1/users" required autocomplete="off">
+          </div>
+          
+          <button type="submit" id="send-btn" class="primary-btn">
+            <span>Send</span>
+            <i data-lucide="send"></i>
+          </button>
+        </div>
+
+        <div class="tabs">
+          <button type="button" class="tab-btn active" data-target="params-tab">Params</button>
+          <button type="button" class="tab-btn" data-target="headers-tab">Headers</button>
+          <button type="button" class="tab-btn" data-target="body-tab">Body</button>
+        </div>
+
+        <div class="tab-content">
+          <!-- Params Tab -->
+          <div id="params-tab" class="tab-pane active">
+            <div id="params-container" class="key-value-list">
+              <div class="key-value-row">
+                <input type="text" class="kv-key param-key" placeholder="Key">
+                <input type="text" class="kv-value param-val" placeholder="Value">
+                <button type="button" class="icon-btn remove-row" aria-label="Remove parameter"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <button type="button" class="text-btn add-row-btn" data-target="params-container">
+              <i data-lucide="plus"></i> Add Param
+            </button>
+          </div>
+
+          <!-- Headers Tab -->
+          <div id="headers-tab" class="tab-pane">
+            <div id="headers-container" class="key-value-list">
+              <div class="key-value-row">
+                <input type="text" class="kv-key header-key" placeholder="Key (e.g., Content-Type)">
+                <input type="text" class="kv-value header-val" placeholder="Value (e.g., application/json)">
+                <button type="button" class="icon-btn remove-row" aria-label="Remove header"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <button type="button" class="text-btn add-row-btn" data-target="headers-container">
+              <i data-lucide="plus"></i> Add Header
+            </button>
+          </div>
+
+          <!-- Body Tab -->
+          <div id="body-tab" class="tab-pane">
+            <div class="body-editor">
+              <textarea id="req-body" placeholder="{&#10;  &#34;key&#34;: &#34;value&#34;&#10;}"></textarea>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Response Panel -->
+    <div class="glass-panel response-panel">
+      <div class="response-header">
+        <h2>Response</h2>
+        <div class="response-meta hidden" id="response-meta">
+          <span class="status-badge" id="res-status-code">200 OK</span>
+          <span class="meta-item" id="res-time"><i data-lucide="clock"></i> <span id="res-time-val">0</span>ms</span>
+        </div>
+      </div>
+      
+      <div id="response-loader" class="loader-container hidden">
+        <div class="spinner"></div>
+        <p>Sending Request...</p>
+      </div>
+
+      <div id="response-content" class="empty-state">
+        <i data-lucide="zap" class="empty-icon"></i>
+        <p>Send a request to see the response here</p>
+      </div>
+      
+      <div id="response-data" class="response-data hidden">
+        <div class="tabs response-tabs">
+          <button type="button" class="tab-btn active" data-target="res-body-tab">Body</button>
+          <button type="button" class="tab-btn" data-target="res-headers-tab">Headers</button>
+        </div>
+        
+        <div class="tab-content response-content-area">
+          <div id="res-body-tab" class="tab-pane active">
+            <pre><code id="res-body-content" class="language-json"></code></pre>
+          </div>
+          <div id="res-headers-tab" class="tab-pane">
+            <div id="res-headers-content" class="headers-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Setup environment for dareal-axios to load properly in browser -->
+  <script>
+    window.module = { exports: {} };
+  </script>
+  <!-- Load the local dareal-axios package -->
+  <script src="./dareal-axios.js"></script>
+  <!-- Export it to window.axios -->
+  <script>
+    window.axios = window.module.exports;
+  </script>
+  <!-- Highlight.js for JSON formatting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  <!-- Main App Logic -->
+  <script src="./app.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

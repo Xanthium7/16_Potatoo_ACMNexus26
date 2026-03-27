@@ -1,6 +1,6 @@
-from fastapi import FastAPI,BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import FileResponse
-from utils.buddle_utils import zip_folder,cleanup_files
+from utils.buddle_utils import zip_folder, cleanup_files
 import os
 
 from agent_pipeline import run_pipeline
@@ -9,7 +9,7 @@ app = FastAPI()
 
 @app.get("/")
 async def home():
-    return {"message":"Server is running hahahaha", "status":"online"}
+    return {"message": "Server is running hahahaha", "status": "online"}
 
 
 @app.get("/download/{package_name}")
@@ -28,19 +28,21 @@ async def download(package_name: str, background_tasks: BackgroundTasks):
     )
 
 # POST route to receive package name and return zip
+
+
 @app.post("/generate")
 async def generate(package_name: str):
     """Receive package name and return zipped package"""
 
     # WRITE LOGIC TO CALL THE AGENT
-    run_pipeline(package_name=package_name)
+    await run_pipeline(package_name=package_name)
 
     # Construct folder path
     folder_path = os.path.join("./codespace", f"{package_name}")
-    
+
     # Zip the folder
     zip_path = zip_folder(folder_path)
-    
+
     if not zip_path:
         return {"error": "Zip failed"}
 

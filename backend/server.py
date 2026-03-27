@@ -1,21 +1,32 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,BackgroundTasks
 from fastapi.responses import FileResponse
-import shutil
+from utils.buddle_utils import zip_folder,cleanup_files
 import os
+
 from agent_pipeline import run_pipeline
 app = FastAPI()
 
-# Simple function to zip a folder
-def zip_folder(folder_path: str):
-    """Zip a folder and return the zip file path"""
-    if not os.path.exists(folder_path):
-        return None
-    zip_path = shutil.make_archive(folder_path, 'zip', folder_path)
-    return zip_path
 
 @app.get("/")
 async def home():
     return {"message":"Server is running hahahaha", "status":"online"}
+
+
+@app.get("/download/{package_name}")
+async def download(package_name: str, background_tasks: BackgroundTasks):
+    zip_path = os.path.join("./codespace", f"{package_name}.zip")
+
+    if not os.path.exists(zip_path):
+        return {"error": "File not found"}
+
+   # background_tasks.add_task(cleanup_files, package_name)
+
+    return FileResponse(
+        zip_path,
+        filename=f"{package_name}.zip",
+        media_type="application/zip"
+    )
+
 
 
 # POST route to receive package name and return zip
@@ -30,20 +41,18 @@ async def generate(package_name: str):
     run_pipeline(package_name=package_name)
     print("here iam flag 1 ")
     # Construct folder path
-    folder_path = os.path.join("../codespace", f"{package_name}")
+    folder_path = os.path.join("./codespace", f"{package_name}")
     
     # Zip the folder
     zip_path = zip_folder(folder_path)
     
     if not zip_path:
-        return {"error": "Folder not found"}
-    
-    # Return zip file
-    return FileResponse(
-        zip_path, 
-        filename=f"{package_name}.zip",
-        media_type="application/zip"
-    )
+        return {"error": "Zip failed"}
+
+    return {
+        "message": "Package ready ✅",
+        "download_url": f"http://localhost:8000/download/{package_name}"
+    }
 
 if __name__ == "__main__":
     import uvicorn

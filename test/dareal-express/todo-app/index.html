@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aesthetic TodoApp | dareal-express</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+        /* Background decorative elements */
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: 0;
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+        .blob-1 {
+            width: 400px;
+            height: 400px;
+            background: #ff007b;
+            top: -100px;
+            left: -100px;
+            animation: float 8s ease-in-out infinite;
+        }
+        .blob-2 {
+            width: 500px;
+            height: 500px;
+            background: #00d2ff;
+            bottom: -150px;
+            right: -100px;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+        @keyframes float {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 450px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: all 0.3s ease;
+        }
+        .container:hover {
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            transform: translateY(-2px);
+        }
+
+        h1 {
+            font-weight: 600;
+            font-size: 28px;
+            text-align: center;
+            background: -webkit-linear-gradient(135deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        p.subtitle {
+            text-align: center;
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #00d2ff;
+            background: rgba(0,0,0,0.4);
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
+        }
+        input[type="text"]::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+
+        button.add-btn {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            border: none;
+            color: white;
+            padding: 0 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+        }
+        button.add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 210, 255, 0.4);
+        }
+        button.add-btn:active {
+            transform: translateY(0);
+        }
+
+        ul.todo-list {
+            list-style: none;
+            max-height: 350px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 5px; /* for scrollbar */
+        }
+        ul.todo-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        ul.todo-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 10px;
+        }
+
+        li.todo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            animation: slideIn 0.4s ease forwards;
+        }
+        li.todo-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255,255,255,0.15);
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .todo-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 2px solid rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .todo-item.done .checkbox {
+            background: #00d2ff;
+            border-color: #00d2ff;
+        }
+        .todo-item.done .checkbox::after {
+            content: '';
+            position: absolute;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            margin-bottom: 2px;
+        }
+
+        .text {
+            font-size: 15px;
+            color: #eee;
+            transition: all 0.3s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .todo-item.done .text {
+            text-decoration: line-through;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.3);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        .delete-btn:hover {
+            color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="container">
+        <div>
+            <h1>Tasks</h1>
+            <p class="subtitle">Powered by dareal-express</p>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="What needs to be done?" autocomplete="off">
+            <button class="add-btn" id="addBtn">Add</button>
+        </div>
+
+        <ul class="todo-list" id="todoList">
+            <!-- Dynamic items will go here -->
+        </ul>
+    </div>
+
+    <script>
+        const taskInput = document.getElementById('taskInput');
+        const addBtn = document.getElementById('addBtn');
+        const todoList = document.getElementById('todoList');
+
+        let todos = [];
+
+        async function fetchInitialTodos() {
+            try {
+                // Fetch from dareal-express server
+                const res = await fetch('/api/todos');
+                const serverTodos = await res.json();
+                
+                // Let's combine local and server if needed. For now just seed.
+                const local = localStorage.getItem('aesthetic_todos');
+                if (local) {
+                    todos = JSON.parse(local);
+                } else {
+                    todos = serverTodos;
+                    saveTodos();
+                }
+                renderTodos();
+            } catch (err) {
+                console.error("Couldn't fetch /api/todos. Falling back to memory.", err);
+                renderTodos();
+            }
+        }
+
+        function saveTodos() {
+            localStorage.setItem('aesthetic_todos', JSON.stringify(todos));
+        }
+
+        function renderTodos() {
+            todoList.innerHTML = '';
+            todos.forEach((todo, i) => {
+                const li = document.createElement('li');
+                li.className = 'todo-item ' + (todo.done ? 'done' : '');
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'todo-content';
+                contentDiv.onclick = () => toggleTodo(i);
+
+                const checkbox = document.createElement('div');
+                checkbox.className = 'checkbox';
+
+                const textSpan = document.createElement('span');
+                textSpan.className = 'text';
+                textSpan.textContent = todo.text;
+
+                contentDiv.appendChild(checkbox);
+                contentDiv.appendChild(textSpan);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.innerHTML = '&times;';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteTodo(i);
+                };
+
+                li.appendChild(contentDiv);
+                li.appendChild(delBtn);
+                todoList.appendChild(li);
+            });
+        }
+
+        function addTodo() {
+            const val = taskInput.value.trim();
+            if(!val) return;
+            todos.push({ id: Date.now(), text: val, done: false });
+            taskInput.value = '';
+            taskInput.focus();
+            saveTodos();
+            renderTodos();
+        }
+
+        function toggleTodo(index) {
+            todos[index].done = !todos[index].done;
+            saveTodos();
+            renderTodos();
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            saveTodos();
+            renderTodos();
+        }
+
+        addBtn.addEventListener('click', addTodo);
+        taskInput.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') addTodo();
+        });
+
+        // Initialize App
+        fetchInitialTodos();
+    </script>
+</body>
+</html>

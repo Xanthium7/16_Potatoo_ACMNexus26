@@ -1,0 +1,9 @@
+{
+  "name": "liberated-express",
+  "version": "1.0.0",
+  "description": "Clean room implementation of express",
+  "main": "index.js",
+  "license": "Proprietary",
+  "author": "Clean Room Engineer (AI)",
+  "keywords": []
+}

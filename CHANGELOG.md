@@ -106,3 +106,44 @@
 
 ### Issues Faced
 - None
+
+## 02:56
+
+### Features Added
+- Added express todolist app
+- Restructured test directory by moving unused test files to a temp folder
+- Added the dareal axios website demonstration
+- Added the ccNetViz website demonstration
+- Connected the Next.js frontend to the FastAPI backend and integrated package name parsing
+
+### Files Modified
+- frontend/todo-app/index.html
+- frontend/todo-app/server.js
+- test/package.json
+- test/test_express.js
+- test/index.js
+- test/temp/README.md
+- test/temp/dareal-iseven.zip
+- test/temp/index.js
+- test/temp/isEven.js
+- test/temp/package.json
+- test/temp/test.js
+- test/temp/test_axios.js
+- test/temp/test_chalk.js
+- test/temp/test_express.js
+- test/temp/test_isEven.js
+- frontend/api-client/app.js
+- frontend/api-client/dareal-axios.js
+- frontend/api-client/index.html
+- frontend/api-client/styles.css
+- frontend/ccnetviz-website/app.js
+- frontend/ccnetviz-website/ccNetViz.js
+- frontend/ccnetviz-website/index.html
+- frontend/ccnetviz-website/style.css
+- backend/codespace/express.zip
+- backend/server.py
+- frontend/app/page.tsx
+- frontend/utils/package_name_parser.js
+
+### Issues Faced
+- None

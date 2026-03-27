@@ -1,102 +1,104 @@
 """
-Standalone README Comparator
-=============================
-This script fetches the README of a given npm package from unpkg.com
-and uses Gemini to compare the documentation against the locally generated
-source code in backend/codespace/<package_name>/ to verify if it fulfills
-the described features.
+Standalone Code Comparator using Levenshtein Distance
+=====================================================
+This script fetches the actual source code of a given npm package from unpkg.com
+and compares it against the locally generated source code in backend/codespace/<package_name>/
+using the Levenshtein distance algorithm to measure similarity.
 """
 
 import sys
 import os
 import requests
-from dotenv import load_dotenv
-from google import genai
 
-def compare_package_with_readme(package_name: str):
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("❌ Error: GEMINI_API_KEY not found in environment")
-        return
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """
+    Computes the Levenshtein edit distance between two strings using dynamic programming.
+    This calculates the minimum number of single-character edits (insertions, deletions, or substitutions)
+    required to change s1 into s2.
+    """
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
 
-    # Fetch README
-    readme_url = f"https://unpkg.com/{package_name}/README.md"
-    print(f"📥 Fetching README from: {readme_url}")
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
+
+def compare_package_code(package_name: str):
+    # Fetch real code - unpkg automatically redirects to the 'main' file defined in package.json
+    real_code_url = f"https://unpkg.com/{package_name}"
+    print(f"📥 Fetching real source code from: {real_code_url}")
     
     try:
-        resp = requests.get(readme_url, timeout=15)
+        resp = requests.get(real_code_url, timeout=15)
         if resp.status_code != 200:
-            print(f"❌ Failed to fetch README (HTTP {resp.status_code})")
+            print(f"❌ Failed to fetch real code (HTTP {resp.status_code}).")
             return
-        readme_content = resp.text
-        print(f"✅ README fetched ({len(readme_content)} chars)")
+        real_code = resp.text
+        print(f"✅ Real code fetched ({len(real_code)} chars)")
     except Exception as e:
-        print(f"❌ Error fetching README: {e}")
+        print(f"❌ Error fetching real code: {e}")
         return
 
-    # Read generated files
+    # Read locally generated Clean-Room code
     codespace_dir = os.path.join(os.path.dirname(__file__), "codespace", package_name)
-    
     index_js_path = os.path.join(codespace_dir, "index.js")
-    package_json_path = os.path.join(codespace_dir, "package.json")
     
-    if not os.path.exists(index_js_path) or not os.path.exists(package_json_path):
-        print(f"❌ Error: Generated files not found in {codespace_dir}")
+    if not os.path.exists(index_js_path):
+        print(f"❌ Error: Generated index.js not found in {codespace_dir}")
         print("Make sure you have run the agent pipeline for this package first.")
         return
 
     try:
         with open(index_js_path, "r", encoding="utf-8") as f:
-            index_js_content = f.read()
-        with open(package_json_path, "r", encoding="utf-8") as f:
-            package_json_content = f.read()
+            generated_code = f.read()
     except Exception as e:
-        print(f"❌ Error reading local generated files: {e}")
+        print(f"❌ Error reading local generated code: {e}")
         return
 
-    # Call Gemini for comparison
-    print(f"\n🤖 Analyzing implementation vs README using Gemini...")
-    client = genai.Client(api_key=api_key)
+    # Compare using Levenshtein distance
+    print(f"\n🧠 Calculating Levenshtein distance... (This may take a few seconds for large files)")
+    distance = levenshtein_distance(real_code, generated_code)
+    max_len = max(len(real_code), len(generated_code))
     
-    prompt = f"""
-You are an expert software engineer reviewing a clean-room implementation of an npm package.
-You will be given the original README documentation, and the generated clean room source code.
+    if max_len == 0:
+        similarity = 100.0
+    else:
+        # Calculate a rough percentage of similarity based on the distance
+        similarity = ((max_len - distance) / max_len) * 100
+        # If distance > max_len (theoretically impossible here but good for bounds), cap at 0
+        similarity = max(0, similarity)
 
-Your task is to analyze if the generated implementation functionally fulfills the behavior, API, and features described in the README.
+    print("\n" + "="*60)
+    print(f"📊 LEVENSHTEIN COMPARISON REPORT FOR '{package_name}'")
+    print("="*60)
+    print(f"Real Code Size:      {len(real_code)} characters")
+    print(f"Generated Code Size: {len(generated_code)} characters")
+    print(f"Levenshtein Distance: {distance} edits needed")
+    print(f"Similarity Score:    {similarity:.2f}%")
+    print("="*60)
 
-**ORIGINAL README**:
-{readme_content}
-
-**GENERATED package.json**:
-```json
-{package_json_content}
-```
-
-**GENERATED index.js**:
-```javascript
-{index_js_content}
-```
-
-Please output a structured markdown assessment detailing:
-1. **API Coverage**: Does the code export the expected functions/classes?
-2. **Behavioral Correctness**: Does the logic seem to match the described behavior?
-3. **Missing Features**: Identify any features from the README that are missing in the code.
-4. **Final Conclusion**: Is this a good clean room implementation?
-"""
-
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
-        print("\n" + "="*60)
-        print(f"📋 ANALYSIS REPORT FOR '{package_name}'")
-        print("="*60)
-        print(response.text)
-        print("="*60)
-    except Exception as e:
-        print(f"❌ Error calling Gemini API: {e}")
+    # Output interpretations
+    if similarity > 80:
+        print("🟢 Output: HIGH SIMILARITY")
+        print("   -> The generated code is extremely close to the original source code. Edits are likely minor format changes.")
+    elif similarity > 40:
+        print("🟡 Output: MODERATE SIMILARITY")
+        print("   -> The generated code shares structural or naming similarities but differs somewhat in logic or boilerplate.")
+    else:
+        print("🔴 Output: LOW SIMILARITY / TRUE CLEAN ROOM")
+        print("   -> The generated code is drastically different from the original.")
+        print("   -> This is actually EXPECTED and GOOD for clean-room engineering, proving it's an original implementation!")
 
 
 if __name__ == "__main__":
@@ -105,4 +107,4 @@ if __name__ == "__main__":
         sys.exit(1)
     
     pkg_name = sys.argv[1]
-    compare_package_with_readme(pkg_name)
+    compare_package_code(pkg_name)

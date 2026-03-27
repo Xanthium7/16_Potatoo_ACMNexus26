@@ -1,19 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050505;
-  --color-foreground: #ededed;
-  --color-annexa-cyan: #00f0ff;
-  --color-annexa-purple: #b026ff;
-  --color-annexa-dark: #0a0a0f;
-  --color-annexa-card: #121216;
-  --color-annexa-border: #22222a;
+  --color-background: #fdfbf7;
+  --color-foreground: #000000;
+  --color-brutal-yellow: #ffee00;
+  --color-brutal-pink: #ff90e8;
+  --color-brutal-cyan: #4facf7;
+  --color-brutal-green: #90ff90;
+  --color-annexa-dark: #000000;
+  --color-annexa-card: #ffffff;
+  --color-annexa-border: #000000;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --background: #050505;
-  --foreground: #ededed;
+  --background: #fdfbf7;
+  --foreground: #000000;
 }
 
 body {
@@ -24,13 +26,25 @@ body {
   padding: 0;
 }
 
-/* Custom Utilities for Neon Glows */
+/* Custom Utilities for Neo-Brutalism */
 @layer utilities {
-  .text-glow-cyan {
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.3);
+  .shadow-brutal {
+    box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
   }
 
-  .border-glow-cyan {
-    box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+  .shadow-brutal-lg {
+    box-shadow: 14px 14px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .shadow-brutal-sm {
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .shadow-brutal-none {
+    box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .border-brutal {
+    border: 4px solid #000000;
   }
 }

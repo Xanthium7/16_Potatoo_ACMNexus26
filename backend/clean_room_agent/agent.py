@@ -12,6 +12,7 @@ The README content must be injected into state as 'readme_content' before runnin
 
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.agents.llm_agent import LlmAgent
+from google.genai import types
 
 # ---------------------------------------------------------------------------
 # Config
@@ -31,6 +32,10 @@ analyst_agent = LlmAgent(
     description=(
         "Analyzes npm package documentation and produces a code-free "
         "functional JSON specification of the package's API surface."
+    ),
+    generate_content_config=types.GenerateContentConfig(
+        max_output_tokens=65536,
+        temperature=0.2,
     ),
     instruction="""You are a **Legal Analyst** performing clean room analysis of a software package.
 
@@ -118,6 +123,10 @@ coder_agent = LlmAgent(
     description=(
         "Writes a brand-new, functionally equivalent npm package implementation "
         "from scratch using only a functional JSON specification."
+    ),
+    generate_content_config=types.GenerateContentConfig(
+        max_output_tokens=65536,
+        temperature=0.3,
     ),
     instruction="""You are a **Clean Room Software Engineer**. You are participating in a legally compliant clean room engineering process.
 

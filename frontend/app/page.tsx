@@ -10,91 +10,110 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState<{message: string, download_url: string} | null>(null);
+  const [result, setResult] = useState<{ message: string, download_url: string } | null>(null);
   const [packageName, setPackageName] = useState("");
   const [manualPkgName, setManualPkgName] = useState("");
   const [toast, setToast] = useState<{ message: string, type: 'error' | 'success' } | null>(null);
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (message: string, type: 'error' | 'success' = 'error') => {
-      setToast({ message, type });
-      setTimeout(() => setToast(null), 4000);
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
   };
 
   const triggerBuild = async (name: string) => {
-      if (!name) return;
-      
-      try {
-          setIsGenerating(true);
-          setResult(null); // Reset previous result
-          setPackageName(name);
-          
-          const res = await fetch(`http://localhost:8000/generate?package_name=${name}`, {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-          });
-          
-          if (!res.ok) {
-              const errorData = await res.json().catch(() => ({}));
-              throw new Error(errorData.error || `Server Error (${res.status})`);
-          }
-          
-          const data = await res.json();
-          console.log("Generation response:", data);
-          setResult(data);
-      } catch (err: any) {
-          console.error("Build trigger error:", err);
-          showToast(err.message || "Failed to trigger build sequence");
-      } finally {
-          setIsGenerating(false);
+    if (!name) return;
+
+    try {
+      setIsGenerating(true);
+      setResult(null); // Reset previous result
+      setPackageName(name);
+
+      const res = await fetch(`http://localhost:8000/generate?package_name=${name}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server Error (${res.status})`);
       }
+
+      const data = await res.json();
+      console.log("Generation response:", data);
+      setResult(data);
+    } catch (err: any) {
+      console.error("Build trigger error:", err);
+      showToast(err.message || "Failed to trigger build sequence");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          setSelectedFile(file);
-          try {
-              const text = await file.text();
-              console.log("File content length:", text.length);
-              const pkgName = extractPackageName(text);
-              
-              if (!pkgName) {
-                  throw new Error("Invalid format: Could not find 'name' field in JSON");
-              }
-              
-              await triggerBuild(pkgName);
-          } catch (err: any) {
-              showToast(err.message || "Could not parse selected file");
-          }
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      try {
+        const text = await file.text();
+        console.log("File content length:", text.length);
+        const pkgName = extractPackageName(text);
+
+        if (!pkgName) {
+          throw new Error("Invalid format: Could not find 'name' field in JSON");
+        }
+
+        await triggerBuild(pkgName);
+      } catch (err: any) {
+        showToast(err.message || "Could not parse selected file");
       }
-      
-      // Clear input so the same file can be selected again
-      if (e.target) {
-          e.target.value = '';
-      }
+    }
+
+    // Clear input so the same file can be selected again
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
   const handleManualBuild = () => {
-      const trimmed = manualPkgName.trim();
-      if (!trimmed) {
-          showToast("Please enter a package identifier");
-          return;
-      }
-      triggerBuild(trimmed);
+    const trimmed = manualPkgName.trim();
+    if (!trimmed) {
+      showToast("Please enter a package identifier");
+      return;
+    }
+    triggerBuild(trimmed);
   };
 
-  const handleDownload = () => {
-      // Use the dynamically stored packageName to download the ZIP file
-      if (packageName) {
-          window.open(`http://localhost:8000/download/${packageName}`, '_self');
-      } else if (result?.download_url) {
-          window.open(result.download_url, '_self');
-      }
+  const handleDownload = async () => {
+    let url = null;
+
+    if (packageName) {
+      url = `http://localhost:8000/download/${packageName}`;
+    } else if (result?.download_url) {
+      url = result.download_url;
+    }
+
+    if (!url) return;
+
+    // fetch file
+    const res = await fetch(url);
+    const blob = await res.blob();
+
+    // create download link
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.download = `${packageName}.zip`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    // 🔥 refresh after download
+    window.location.reload();
   };
 
   const { scrollYProgress } = useScroll({
@@ -106,7 +125,7 @@ export default function Home() {
     // Apply scroll snapping to the html element
     document.documentElement.style.scrollSnapType = "y mandatory";
     document.documentElement.style.scrollBehavior = "smooth";
-    
+
     return () => {
       document.documentElement.style.scrollSnapType = "";
       document.documentElement.style.scrollBehavior = "";
@@ -308,27 +327,27 @@ export default function Home() {
                   } p-12 md:p-16 flex flex-col items-center justify-center text-center transition-all duration-200 cursor-pointer group relative`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => { 
-                  e.preventDefault(); 
+                onDrop={(e) => {
+                  e.preventDefault();
                   setIsDragging(false);
                   const file = e.dataTransfer.files?.[0];
                   if (file && file.name.endsWith('.json')) {
-                      setSelectedFile(file);
-                      file.text().then(text => {
-                          const pkgName = extractPackageName(text);
-                          if (pkgName) {
-                              triggerBuild(pkgName);
-                          } else {
-                              showToast("Missing package name in JSON");
-                          }
-                      }).catch(() => showToast("Failed to read dropped file"));
+                    setSelectedFile(file);
+                    file.text().then(text => {
+                      const pkgName = extractPackageName(text);
+                      if (pkgName) {
+                        triggerBuild(pkgName);
+                      } else {
+                        showToast("Missing package name in JSON");
+                      }
+                    }).catch(() => showToast("Failed to read dropped file"));
                   } else if (file) {
-                      showToast("Only .json manifests are accepted");
+                    showToast("Only .json manifests are accepted");
                   }
                 }}
               >
                 {result ? (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="flex flex-col items-center justify-center py-8"
@@ -342,14 +361,14 @@ export default function Home() {
                     <p className="text-sm font-black text-black/50 tracking-[0.2em] uppercase border-2 border-black/10 px-4 py-2 bg-black/5 mb-8">
                       {selectedFile?.name || "package.json"}
                     </p>
-                    <button 
+                    <button
                       onClick={handleDownload}
                       className="bg-brutal-cyan text-black px-8 py-4 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95 inline-flex items-center gap-3"
                     >
                       <Upload className="rotate-180 w-5 h-5 flex-shrink-0" /> Download Package
                     </button>
-                    
-                    <button 
+
+                    <button
                       onClick={() => {
                         setResult(null);
                         setSelectedFile(null);
@@ -380,22 +399,22 @@ export default function Home() {
                     <div className="flex flex-col gap-6 w-full max-w-sm relative z-10">
                       {/* Manual Build Row */}
                       <div className="flex flex-col gap-2">
-                         <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              value={manualPkgName}
-                              onChange={(e) => setManualPkgName(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleManualBuild()}
-                              placeholder="IDENTIFIER: E.G. EXPRESS"
-                              className="flex-1 bg-white border-4 border-black px-4 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:bg-brutal-yellow transition-all placeholder:text-black/20"
-                            />
-                            <button 
-                              onClick={handleManualBuild}
-                              className="bg-black text-white px-6 py-4 border-4 border-black font-black text-[10px] tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-green hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-brutal-none transition-all duration-150 active:scale-95"
-                            >
-                              Build
-                            </button>
-                         </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={manualPkgName}
+                            onChange={(e) => setManualPkgName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleManualBuild()}
+                            placeholder="IDENTIFIER: E.G. EXPRESS"
+                            className="flex-1 bg-white border-4 border-black px-4 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:bg-brutal-yellow transition-all placeholder:text-black/20"
+                          />
+                          <button
+                            onClick={handleManualBuild}
+                            className="bg-black text-white px-6 py-4 border-4 border-black font-black text-[10px] tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-green hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-brutal-none transition-all duration-150 active:scale-95"
+                          >
+                            Build
+                          </button>
+                        </div>
                       </div>
 
                       <div className="relative">
@@ -405,7 +424,7 @@ export default function Home() {
 
                       {/* File Upload Row */}
                       <div className="flex flex-col sm:flex-row gap-4">
-                        <button 
+                        <button
                           onClick={() => fileInputRef.current?.click()}
                           className="flex-1 bg-white text-black px-8 py-5 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-cyan hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95"
                         >
@@ -432,37 +451,7 @@ export default function Home() {
                     </div>
                   </>
                 ) : (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center py-8"
-                  >
-                    <div className="relative w-28 h-28 mb-8">
-                      <motion.div className="absolute inset-0 border-[6px] border-black/10 rounded-full" />
-                      <motion.div 
-                        className="absolute inset-0 border-[6px] border-transparent border-t-brutal-cyan border-r-brutal-pink rounded-full"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Upload size={36} strokeWidth={2.5} className="text-black animate-pulse" />
-                      </div>
-                    </div>
-                    <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-4 leading-none">
-                      Generating legal code
-                    </h3>
-                    <p className="text-sm font-black text-black/50 tracking-[0.2em] uppercase border-2 border-black/10 px-4 py-2 bg-black/5">
-                      {selectedFile?.name || "package.json"}
-                    </p>
-                    <div className="mt-8 w-64 h-3 bg-black/10 border-2 border-black overflow-hidden relative">
-                      <motion.div
-                        className="h-full bg-brutal-yellow border-r-2 border-black"
-                        initial={{ width: "0%" }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: 4, ease: "easeInOut" }}
-                      />
-                    </div>
-                  </motion.div>
+                  <BrutalSnake filename={selectedFile?.name || "package.json"} />
                 )}
               </div>
             </motion.div>
@@ -492,15 +481,15 @@ export default function Home() {
       {/* Simple Brutal Toast */}
       <AnimatePresence>
         {toast && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className={`fixed bottom-24 right-8 border-4 border-black p-4 shadow-brutal z-[100] ${toast.type === 'error' ? 'bg-brutal-pink' : 'bg-brutal-green'}`}
           >
             <div className="flex items-center gap-3">
-               <AlertTriangle size={18} strokeWidth={3} className="text-black" />
-               <span className="text-[11px] font-black uppercase tracking-widest text-black">{toast.message}</span>
+              <AlertTriangle size={18} strokeWidth={3} className="text-black" />
+              <span className="text-[11px] font-black uppercase tracking-widest text-black">{toast.message}</span>
             </div>
           </motion.div>
         )}
@@ -508,3 +497,119 @@ export default function Home() {
     </>
   );
 }
+
+const SimpleSnake = ({ isGenerating, selectedFileName }: { isGenerating: boolean, selectedFileName?: string }) => {
+  return null; // This was just a placeholder intended for the main block below
+};
+
+const BrutalSnake = ({ filename }: { filename: string }) => {
+  const GRID_SIZE = 20;
+  const [snake, setSnake] = useState([{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }, { x: 7, y: 10 }]);
+  const [dir, setDir] = useState({ x: 1, y: 0 });
+  const [food, setFood] = useState({ x: 15, y: 10 });
+
+  useEffect(() => {
+    const handleKeys = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if ((key === "arrowup" || key === "w") && dir.y === 0) setDir({ x: 0, y: -1 });
+      if ((key === "arrowdown" || key === "s") && dir.y === 0) setDir({ x: 0, y: 1 });
+      if ((key === "arrowleft" || key === "a") && dir.x === 0) setDir({ x: -1, y: 0 });
+      if ((key === "arrowright" || key === "d") && dir.x === 0) setDir({ x: 1, y: 0 });
+    };
+    window.addEventListener("keydown", handleKeys);
+    return () => window.removeEventListener("keydown", handleKeys);
+  }, [dir]);
+
+  useEffect(() => {
+    const moveInterval = setInterval(() => {
+      setSnake(oldSnake => {
+        const head = oldSnake[0];
+        const newHead = {
+          x: (head.x + dir.x + GRID_SIZE) % GRID_SIZE,
+          y: (head.y + dir.y + GRID_SIZE) % GRID_SIZE
+        };
+
+        const newSnake = [newHead, ...oldSnake.slice(0, -1)];
+
+        if (newHead.x === food.x && newHead.y === food.y) {
+          setFood({
+            x: Math.floor(Math.random() * GRID_SIZE),
+            y: Math.floor(Math.random() * GRID_SIZE)
+          });
+        }
+
+        return newSnake;
+      });
+    }, 120);
+    return () => clearInterval(moveInterval);
+  }, [dir, food]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col items-center justify-center p-4 w-full h-full min-h-[400px]"
+    >
+      <div className="mb-8 flex flex-col items-center">
+        <h3 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-2">
+          Generating legal code
+        </h3>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] border-2 border-black px-3 py-1 bg-black text-white shadow-brutal-sm">
+            {filename}
+          </span>
+          <div className="flex items-center gap-1.5 px-3 py-1 border-2 border-black bg-brutal-pink/20">
+            <div className="w-2 h-2 rounded-full bg-brutal-pink animate-pulse" />
+            <span className="text-[10px] font-black text-black uppercase tracking-widest">
+              SNAKE_PROTOCOL_V4
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="grid gap-0 border-8 border-black bg-white shadow-brutal relative overflow-hidden"
+        style={{
+          gridTemplateColumns: `repeat(${GRID_SIZE}, 1.1rem)`,
+          gridTemplateRows: `repeat(${GRID_SIZE}, 1.1rem)`
+        }}
+      >
+        {/* Visual Grid Lines Overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.05]"
+          style={{
+            backgroundImage: 'linear-gradient(to right, black 1px, transparent 1px), linear-gradient(to bottom, black 1px, transparent 1px)',
+            backgroundSize: '1.1rem 1.1rem'
+          }} />
+
+        {/* Food */}
+        <div
+          className="border-3 border-black bg-brutal-green rounded-sm z-10 m-[1px]"
+          style={{ gridColumnStart: food.x + 1, gridRowStart: food.y + 1 }}
+        />
+
+        {/* Snake Body */}
+        {snake.map((segment, index) => (
+          <motion.div
+            key={`${segment.x}-${segment.y}-${index}`}
+            className={`border-3 border-black rounded-sm z-20 m-[1px] ${index === 0 ? 'bg-[#d40062]' : 'bg-[#ff007a]'}`}
+            style={{ gridColumnStart: segment.x + 1, gridRowStart: segment.y + 1 }}
+          />
+        ))}
+      </div>
+
+      <div className="mt-8 flex items-center gap-8 text-[10px] font-black uppercase tracking-[0.2em] text-black">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-black bg-white flex items-center justify-center font-serif text-[8px]">W</div>
+          <div className="w-4 h-4 border-2 border-black bg-white flex items-center justify-center font-serif text-[8px]">A</div>
+          <div className="w-4 h-4 border-2 border-black bg-white flex items-center justify-center font-serif text-[8px]">S</div>
+          <div className="w-4 h-4 border-2 border-black bg-white flex items-center justify-center font-serif text-[8px]">D</div>
+          <span className="ml-1 opacity-50">TO NAVIGATE</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="px-3 py-1 border-2 border-black bg-brutal-yellow">NO_DEATH_OVERRIDE</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+

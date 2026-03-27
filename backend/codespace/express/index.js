@@ -1,162 +1,223 @@
 const http = require('http');
+const url = require('url');
 
-// Helper to check Node.js version as per specification constraints.
-// "A minimum Node.js version of 18 or higher is necessary for installation and execution."
-const currentNodeVersion = process.versions.node.split('.').map(Number);
-if (currentNodeVersion[0] < 18) {
-  console.warn(`Warning: This package requires Node.js version 18 or higher. You are running ${process.versions.node}. It may not function as expected.`);
+/**
+ * Represents the HTTP Request object.
+ * A wrapper around Node.js's http.IncomingMessage.
+ * This object encapsulates information about the incoming client request.
+ * The detailed API surface is minimal as per specification.
+ */
+class Request {
+  constructor(incomingMessage) {
+    /**
+     * @private
+     * The raw Node.js IncomingMessage object.
+     */
+    this.originalRequest = incomingMessage;
+
+    /**
+     * The URL of the incoming request.
+     * @type {string}
+     */
+    this.url = incomingMessage.url;
+
+    /**
+     * The HTTP method of the incoming request (e.g., 'GET', 'POST').
+     * @type {string}
+     */
+    this.method = incomingMessage.method;
+
+    /**
+     * An object containing the request headers.
+     * @type {object}
+     */
+    this.headers = incomingMessage.headers;
+
+    // Additional properties like query parameters, body, etc.
+    // are not explicitly detailed in the quick start specification,
+    // so they are not implemented in this minimal clean room version.
+  }
 }
 
 /**
- * Custom Response object to be passed to route handlers.
- * Provides the `send` method as specified.
- * @class
+ * Represents the HTTP Response object.
+ * A wrapper around Node.js's http.ServerResponse.
+ * This object provides methods for constructing and sending the HTTP response.
  */
-class CleanRoomResponse {
-  constructor(nativeRes) {
-    this.nativeRes = nativeRes;
-    this.sent = false; // To prevent sending multiple responses
+class Response {
+  constructor(serverResponse) {
+    /**
+     * @private
+     * The raw Node.js ServerResponse object.
+     */
+    this.originalResponse = serverResponse;
+
+    /**
+     * The HTTP status code to be sent in the response.
+     * Defaults to 200 (OK).
+     * @type {number}
+     */
+    this.statusCode = 200;
   }
 
   /**
-   * Sends an HTTP response back to the client.
-   * Specification: "This method takes content as an argument and uses it as the body of the response, effectively ending the request-response cycle."
-   * Specification: "The documentation does not specify the behavior of 'ResponseObject.send' if the 'body' argument is not a string."
-   * For clean room, adhering strictly to 'string' type and throwing for others due to no explicit coercion rule.
+   * Sends an HTTP response to the client. The content type is automatically
+   * inferred based on the type of the argument provided.
+   * - String: sets 'Content-Type' to 'text/html'.
+   * - Object (non-Buffer): sets 'Content-Type' to 'application/json' and sends JSON string.
+   * - Buffer: sets 'Content-Type' to 'application/octet-stream' and sends raw buffer.
    *
-   * @param {string} body - The content to be sent as the body of the HTTP response.
-   * @throws {Error} If `body` is not a string or if response has already been sent.
+   * @param {string | object | Buffer} body - The content to send as the HTTP response body.
+   * @returns {Response} The Response object itself, allowing for method chaining.
    */
   send(body) {
-    if (this.sent) {
-      console.warn('Warning: Response already sent. Cannot send multiple responses.');
-      return; // Silently ignore subsequent calls to send after the first one.
-    }
+    // Ensure the status code is set on the underlying Node.js response object
+    this.originalResponse.statusCode = this.statusCode;
 
-    if (typeof body !== 'string') {
-      throw new Error('ResponseObject.send: body must be a string.');
+    // Infer Content-Type and send the body based on its type
+    if (typeof body === 'string') {
+      this.originalResponse.setHeader('Content-Type', 'text/html');
+      this.originalResponse.end(body);
+    } else if (typeof body === 'object' && body !== null && !Buffer.isBuffer(body)) {
+      this.originalResponse.setHeader('Content-Type', 'application/json');
+      try {
+        this.originalResponse.end(JSON.stringify(body));
+      } catch (e) {
+        console.error('Error stringifying JSON response body:', e);
+        // Fallback to plain text error if JSON serialization fails
+        this.originalResponse.setHeader('Content-Type', 'text/plain');
+        this.originalResponse.end('Error: Could not serialize response body to JSON.');
+      }
+    } else if (Buffer.isBuffer(body)) {
+      this.originalResponse.setHeader('Content-Type', 'application/octet-stream');
+      this.originalResponse.end(body);
+    } else {
+      // Default handling for other types, e.g., numbers, booleans, undefined
+      // Convert to string and send as plain text
+      this.originalResponse.setHeader('Content-Type', 'text/plain');
+      this.originalResponse.end(String(body));
     }
-
-    // Default headers and status code as per typical HTTP response.
-    this.nativeRes.setHeader('Content-Type', 'text/plain');
-    this.nativeRes.statusCode = 200; 
-    this.nativeRes.end(body);
-    this.sent = true;
+    return this;
   }
 }
 
 /**
- * Represents an Express-like application instance.
- * Provides `get` for routing and `listen` for starting the server.
- * @class
+ * Represents an Express application instance.
+ * This is the core object returned by calling the 'express()' function.
+ * It provides the main API for configuring routes, middleware, and starting the HTTP server.
  */
-class CleanRoomApplication {
+class Application {
   constructor() {
+    /**
+     * @private
+     * Stores registered routes. Each route is an object like { method: 'GET', path: '/foo', handler: Function }.
+     * This clean room implementation uses simple string path matching.
+     */
     this.routes = [];
-    this.server = null; // Holds the http.Server instance
   }
 
   /**
-   * Registers a handler function for HTTP GET requests on a specified URL path.
-   * Specification: "The 'get' method must accept a string representing a URL path as its first argument and a function as its second argument."
-   * Specification: "The documentation does not specify the behavior of 'ApplicationInstance.get' when provided with invalid or malformed 'path' strings."
-   * For clean room, validating types and throwing errors for invalid inputs to ensure robust behavior.
+   * Routes HTTP GET requests to the specified path.
+   * When a GET request matches the provided path, the associated callback function is executed.
    *
-   * @param {string} path - The URL path (e.g., '/' or '/users') to which the handler function should respond.
-   * @param {function} handler - A callback function invoked when a GET request matches the specified path.
-   * @returns {CleanRoomApplication} The application instance itself, allowing for method chaining.
-   * @throws {Error} If `path` is not a string or `handler` is not a function.
+   * @param {string} path - The URL path for which to handle incoming GET requests.
+   *                        This implementation supports simple string paths.
+   * @param {function(Request, Response)} callback - A callback function invoked when a GET request
+   *                                                  matches the path. It receives a Request object
+   *                                                  and a Response object.
+   * @returns {Application} The Application object itself, allowing for method chaining.
+   * @throws {Error} If `path` is not a non-empty string or `callback` is not a function.
    */
-  get(path, handler) {
+  get(path, callback) {
     if (typeof path !== 'string' || path.length === 0) {
-      throw new Error('ApplicationInstance.get: path must be a non-empty string.');
+      throw new Error('app.get: \"path\" must be a non-empty string.');
     }
-    if (typeof handler !== 'function') {
-      throw new Error('ApplicationInstance.get: handler must be a function.');
+    if (typeof callback !== 'function') {
+      throw new Error('app.get: \"callback\" must be a function.');
     }
-
-    this.routes.push({ method: 'GET', path, handler });
+    this.routes.push({ method: 'GET', path, handler: callback });
     return this;
   }
 
   /**
-   * Starts the HTTP server and binds it to a specific port, making it listen for incoming connections.
-   * Specification: "The 'listen' method must accept a number representing the port as its first argument."
-   * Specification: "The 'listen' method must optionally accept a function as its second argument, which serves as a callback."
-   * Specification: "The documentation does not specify the behavior of 'ApplicationInstance.listen' if the 'port' argument is not a valid number."
-   * For clean room, validating port range and type, and callback type.
+   * Starts an HTTP server and binds it to listen for connections on the specified port.
+   * Once the server is successfully listening, an optional callback function is executed.
    *
-   * @param {number} port - The numerical port number on which the HTTP server should listen.
-   * @param {function} [callback] - Optional function invoked after the server has successfully started.
-   * @throws {Error} If `port` is not a valid positive integer or if `callback` is provided but not a function.
+   * @param {number} port - The port number on which the HTTP server should listen.
+   * @param {function} [callback] - An optional callback function executed once the server
+   *                                  has successfully started listening.
+   * @returns {http.Server} An instance of Node.js's native HTTP server object,
+   *                         which can be used for further server management or shutdown.
+   * @throws {Error} If `port` is not a positive integer or `callback` is provided but not a function.
    */
   listen(port, callback) {
-    if (typeof port !== 'number' || !Number.isInteger(port) || port <= 0 || port > 65535) {
-      throw new Error('ApplicationInstance.listen: port must be a positive integer between 1 and 65535.');
+    if (typeof port !== 'number' || port <= 0 || !Number.isInteger(port)) {
+      throw new Error('app.listen: \"port\" must be a positive integer.');
     }
-    if (callback && typeof callback !== 'function') {
-      throw new Error('ApplicationInstance.listen: callback must be a function if provided.');
+    if (callback !== undefined && typeof callback !== 'function') {
+      throw new Error('app.listen: \"callback\", if provided, must be a function.');
     }
 
-    // Create the Node.js native HTTP server.
-    this.server = http.createServer((req, res) => {
-      const cleanRoomRes = new CleanRoomResponse(res);
+    const server = http.createServer((req, res) => {
+      const request = new Request(req);
+      const response = new Response(res);
 
-      // Find the first route that matches the incoming request's method and URL.
-      // This simplistic matching only considers exact path matches for GET requests.
-      const matchedRoute = this.routes.find(route =>
-        route.method === req.method && route.path === req.url
-      );
+      const parsedUrl = url.parse(req.url);
+      const pathname = parsedUrl.pathname; // Pathname without query string
+      const method = req.method;
 
-      if (matchedRoute) {
-        try {
-          // Invoke the registered handler with the native request and our custom response object.
-          matchedRoute.handler(req, cleanRoomRes);
-        } catch (handlerError) {
-          // In case of an error within the handler, log it and send a 500 if response hasn't been sent yet.
-          console.error(`Error in route handler for ${req.method} ${req.url}:`, handlerError);
-          if (!cleanRoomRes.sent) {
-            res.statusCode = 500;
-            res.setHeader('Content-Type', 'text/plain');
-            res.end('Internal Server Error');
+      let routeFound = false;
+      for (const route of this.routes) {
+        // Simple string comparison for path matching and method matching.
+        // The specification mentions "string pattern, or a regular expression"
+        // for paths, which would require more advanced routing logic.
+        // This clean room implementation adheres to the explicit quick start
+        // example of simple string paths.
+        if (route.method === method && route.path === pathname) {
+          routeFound = true;
+          try {
+            // Execute the route handler with the custom Request and Response objects
+            route.handler(request, response);
+          } catch (handlerError) {
+            console.error('Error occurred in route handler for %s %s:', method, pathname, handlerError);
+            // If the handler throws an error and the response has not yet been sent,
+            // send a 500 Internal Server Error.
+            if (!res.headersSent) {
+              response.statusCode = 500;
+              response.send('Internal Server Error');
+            }
           }
+          break; // Stop after finding the first matching route
         }
-      } else {
-        // If no route matches, send a 404 Not Found response.
-        res.statusCode = 404;
-        res.setHeader('Content-Type', 'text/plain');
-        res.end(`Cannot ${req.method} ${req.url}`);
+      }
+
+      if (!routeFound) {
+        // If no route matched the incoming request, send a 404 Not Found response.
+        if (!res.headersSent) { // Ensure no headers were sent by any preceding logic
+          response.statusCode = 404;
+          response.send(`Cannot ${method} ${pathname}`);
+        }
       }
     });
 
-    // Start the server and bind it to the specified port.
-    this.server.listen(port, () => {
-      // The optional callback is executed once the server has successfully started listening.
-      if (callback) {
-        callback();
-      }
-    });
-
-    // Handle server-level errors, e.g., port already in use (EADDRINUSE).
-    // Specification notes: "The documentation does not explicitly detail error handling mechanisms for ... runtime failures (e.g., server unable to start due to port unavailability)."
-    // Logging is a minimalist approach consistent with clean room principles.
-    this.server.on('error', (err) => {
-      console.error(`Server failed to start or encountered an error on port ${port}: ${err.message}`);
-    });
+    // Start the server on the specified port.
+    // The native http.Server object handles potential errors like port in use
+    // by emitting an 'error' event.
+    server.listen(port, callback);
+    return server;
   }
 }
 
 /**
- * The default export of the 'express' package.
- * When invoked, it initializes and returns a new Express application object.
- * Specification: "when called without arguments".
- * Specification: "The documentation does not explicitly define behavior for invoking the default 'express' function with arguments."
- * As a minimalist framework, it implicitly ignores any arguments if provided, focusing only on the return value to remain unopinionated.
+ * The default export of the package. When invoked without arguments,
+ * it initializes and returns an Express Application instance.
  *
- * @returns {CleanRoomApplication} An Express application instance.
+ * @returns {Application} An Express Application object, providing methods
+ *                        for routing, middleware, and server management.
  */
-function createApplication() {
-  return new CleanRoomApplication();
+function express() {
+  return new Application();
 }
 
-module.exports = createApplication;
+// Export the express function as the default module export for CommonJS.
+module.exports = express;

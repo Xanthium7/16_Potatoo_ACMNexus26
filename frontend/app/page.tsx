@@ -237,8 +237,8 @@ export default function Home() {
                 transition={{ delay: 0.7, type: "spring", stiffness: 100, damping: 15 }}
                 className="flex-1 relative w-full aspect-square max-w-[420px]"
               >
-                <div className="absolute inset-0 bg-black translate-x-3 translate-y-3 clip-brutal-1" />
-                <div className="absolute inset-0 border-4 border-black bg-white overflow-hidden clip-brutal-1">
+                <div className="absolute inset-0 bg-black translate-x-3 translate-y-3" />
+                <div className="absolute inset-0 border-4 border-black bg-white overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="image.png"

@@ -1,47 +1,49 @@
 "use client";
 
 import TopNav from "@/components/TopNav";
-import { Upload, ShieldCheck, AlertTriangle, Scale, Heart } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
-
-const cardData = [
-  {
-    bgColor: "#ffee00",
-    icon: <Scale strokeWidth={3} className="w-8 h-8" />,
-    tag: "ISSUE-001",
-    title: "Apache License Attribution",
-    body: 'Is your legal team frustrated with the attribution clause? Tired of putting "Portions of this software..." in your documentation?',
-  },
-  {
-    bgColor: "#ff90e8",
-    icon: <AlertTriangle strokeWidth={3} className="w-8 h-8" />,
-    tag: "ISSUE-002",
-    title: "AGPL Contamination",
-    body: "Does your company forbid AGPL code? One wrong import and suddenly your entire proprietary codebase must be open sourced.",
-  },
-  {
-    bgColor: "#4facf7",
-    icon: <ShieldCheck strokeWidth={3} className="w-8 h-8" />,
-    tag: "ISSUE-003",
-    title: "License Compliance Overhead",
-    body: "Tracking licenses across hundreds of dependencies? Legal reviews taking weeks? What if you could just... not deal with any of that?",
-  },
-  {
-    bgColor: "#90ff90",
-    icon: <Heart strokeWidth={3} className="w-8 h-8" />,
-    tag: "ISSUE-004",
-    title: "Giving Back To Community",
-    body: "Some licenses require you to contribute improvements back. Your shareholders didn\u2019t invest in your company so you could help strangers.",
-  },
-];
+import { Upload, ArrowRight, ShieldCheck, AlertTriangle, Scale, Heart } from "lucide-react";
+import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 2200);
+    // Apply scroll snapping to the html element
+    document.documentElement.style.scrollSnapType = "y mandatory";
+    document.documentElement.style.scrollBehavior = "smooth";
+    
+    return () => {
+      document.documentElement.style.scrollSnapType = "";
+      document.documentElement.style.scrollBehavior = "";
+    };
+  }, []);
+
+  // Faster spring for direct-feeling scroll
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 400,
+    damping: 90,
+    restDelta: 0.001
+  });
+
+  // Transform values for the scroll interaction
+  const heroScale = useTransform(smoothProgress, [0, 0.4], [1, 0.9]);
+  const heroOpacity = useTransform(smoothProgress, [0, 0.4], [1, 0]);
+  const heroY = useTransform(smoothProgress, [0, 0.4], [0, -80]);
+
+  const uploadOpacity = useTransform(smoothProgress, [0.3, 0.55], [0, 1]);
+  const uploadY = useTransform(smoothProgress, [0.3, 0.55], [60, 0]);
+  const uploadScale = useTransform(smoothProgress, [0.3, 0.55], [0.95, 1]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoaded(true), 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -59,7 +61,7 @@ export default function Home() {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
     },
   };
 
@@ -72,203 +74,209 @@ export default function Home() {
             key="loader"
             className="fixed inset-0 z-[200] bg-[#fdfbf7] flex items-center justify-center flex-col"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
+            exit={{ opacity: 0, scale: 1.05, filter: "blur(8px)" }}
+            transition={{ duration: 0.6, ease: "circOut" }}
           >
-            {/* Spinning circle */}
-            <div className="relative w-28 h-28 mb-10">
+            <div className="relative w-28 h-28 mb-8">
               <motion.div
-                className="absolute inset-0 border-[6px] border-black/10 rounded-full"
+                className="absolute inset-0 border-[6px] border-black/5 rounded-full"
               />
               <motion.div
                 className="absolute inset-0 border-[6px] border-transparent border-t-black border-r-black rounded-full"
                 animate={{ rotate: 360 }}
-                transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.span
-                  className="text-2xl font-black tracking-tight"
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="text-2xl font-black tracking-tighter"
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
                 >
                   A.
                 </motion.span>
               </div>
             </div>
-
-            <p className="text-sm font-bold uppercase tracking-[0.35em] text-black/60">
-              Loading Experience
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-black/40">
+              Initializing Protocol
             </p>
-
-            {/* Progress bar */}
-            <div className="w-56 h-2 bg-black/10 border-2 border-black mt-6 overflow-hidden">
+            <div className="w-48 h-2 bg-black/5 border-2 border-black mt-6 overflow-hidden relative">
               <motion.div
                 className="h-full bg-black"
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
-                transition={{ duration: 2, ease: "easeInOut" }}
+                transition={{ duration: 2.2, ease: "easeInOut" }}
               />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ──── MAIN PAGE ──── */}
-      <main className="min-h-screen flex flex-col bg-[#fdfbf7] relative overflow-hidden">
-        {/* Decorative background shapes */}
-        <div className="absolute top-20 right-[-5%] w-72 h-72 rounded-full pointer-events-none" style={{ backgroundColor: "rgba(255, 238, 0, 0.3)" }} />
-        <div className="absolute top-[60%] left-[-8%] w-96 h-96 rounded-full pointer-events-none" style={{ backgroundColor: "rgba(255, 144, 232, 0.2)" }} />
-        <div className="absolute bottom-10 right-[10%] w-48 h-48 rotate-45 pointer-events-none" style={{ backgroundColor: "rgba(144, 255, 144, 0.25)" }} />
+      {/* ──── MAIN CONTAINER ──── */}
+      <div ref={containerRef} className="h-[200vh] bg-[#fdfbf7] relative">
+        {/* Snap Points */}
+        <div className="h-screen snap-start pointer-events-none" />
+        <div className="h-screen snap-start pointer-events-none" />
 
-        <TopNav />
+        {/* Fixed Background Elements */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-10">
+          <div className="absolute top-[-5%] right-[-5%] w-[35%] h-[35%] rounded-full" style={{ backgroundColor: "#ffee00" }} />
+          <div className="absolute bottom-[-5%] left-[-5%] w-[25%] h-[25%] rounded-full" style={{ backgroundColor: "#ff90e8" }} />
+        </div>
 
-        {/* ──── HERO SECTION ──── */}
-        <motion.div
-          className="max-w-6xl mx-auto w-full px-8 pt-20 pb-8 flex-1 flex flex-col relative z-10"
-          variants={stagger}
-          initial="hidden"
-          animate={isLoaded ? "visible" : "hidden"}
-        >
-          <motion.div variants={pop} className="mb-4">
-            <span className="inline-block border-3 border-black px-5 py-2 text-xs font-black uppercase tracking-[0.3em] shadow-brutal-sm -rotate-1" style={{ backgroundColor: "#ffee00" }}>
-              Cybersecurity Platform
-            </span>
-          </motion.div>
+        <main className="fixed inset-0 flex flex-col overflow-hidden pt-20 pointer-events-none">
+          <div className="pointer-events-auto">
+            <TopNav />
+          </div>
 
-          <motion.h1
-            variants={pop}
-            className="text-5xl md:text-7xl lg:text-[5.5rem] font-black uppercase leading-[0.95] tracking-tight mb-8 text-black"
-          >
-            Rebuild from<br />
-            <span className="inline-block px-3 py-1 border-4 border-black shadow-brutal mt-2 rotate-1" style={{ backgroundColor: "#ff90e8" }}>
-              First Principles.
-            </span>
-            <br />
-            Secure with{" "}
-            <span className="inline-block border-b-[6px] border-black italic">
-              Annexa.
-            </span>
-          </motion.h1>
-
-          <motion.p
-            variants={pop}
-            className="text-black/60 text-lg md:text-xl max-w-xl leading-relaxed mb-12 font-medium"
-          >
-            The next evolution of cybersecurity architecture. Deploy dual-agent
-            AI defense systems to secure your infrastructure against emerging
-            threats.
-          </motion.p>
-
-          {/* ──── UPLOAD SECTION ──── */}
-          <motion.div variants={pop} className="w-full flex justify-center mb-20">
-            <div
-              className={`w-full max-w-3xl bg-white border-4 ${isDragging
-                ? "border-brutal-cyan bg-brutal-cyan/10 translate-x-[6px] translate-y-[6px] shadow-brutal-none"
-                : "border-black shadow-brutal-lg hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-sm"
-                } p-12 md:p-16 flex flex-col items-center justify-center text-center transition-all duration-200 cursor-pointer group`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDragging(false);
-              }}
+          <div className="flex-1 relative">
+            {/* ──── SECTION 1: HERO (Fades out on scroll) ──── */}
+            <motion.div
+              style={{ scale: heroScale, opacity: heroOpacity, y: heroY }}
+              className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center px-8 lg:px-20 gap-8 lg:gap-16 pointer-events-auto"
             >
-              <div className="w-20 h-20 border-4 border-black flex items-center justify-center mb-8 shadow-brutal-sm group-hover:rotate-6 transition-transform duration-300" style={{ backgroundColor: "#ffee00" }}>
-                <Upload strokeWidth={3} className="w-9 h-9 text-black" />
+              <div className="flex-1 flex flex-col items-start max-w-xl">
+                <motion.div
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={isLoaded ? { x: 0, opacity: 1 } : {}}
+                  transition={{ delay: 0.5 }}
+                  className="mb-4"
+                >
+                  <span className="inline-block border-2 border-black px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] shadow-brutal-sm -rotate-2" style={{ backgroundColor: "#ffee00" }}>
+                    Clean Room as a Service
+                  </span>
+                </motion.div>
+
+                <motion.h1
+                  initial={{ y: 30, opacity: 0 }}
+                  animate={isLoaded ? { y: 0, opacity: 1 } : {}}
+                  transition={{ delay: 0.6 }}
+                  className="text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black uppercase leading-[0.9] tracking-tighter text-black mb-6"
+                >
+                  Rebuild from<br />
+                  <span className="inline-block px-4 py-1 border-4 border-black shadow-brutal mt-2 rotate-1" style={{ backgroundColor: "#ff90e8" }}>
+                    Principles.
+                  </span>
+                </motion.h1>
+
+                <motion.p
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={isLoaded ? { y: 0, opacity: 1 } : {}}
+                  transition={{ delay: 0.7 }}
+                  className="text-black/60 text-base md:text-lg max-w-md leading-snug font-bold tracking-tight"
+                >
+                  Deploy isolated AI agents to observe, abstract, and rebuild software into independent, secure implementations.
+                </motion.p>
+
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={isLoaded ? { y: 0, opacity: 1 } : {}}
+                  transition={{ delay: 0.8 }}
+                  className="mt-8 flex items-center gap-4 group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full border-3 border-black flex items-center justify-center bg-white group-hover:bg-brutal-cyan transition-colors shadow-brutal-sm">
+                    <motion.div animate={{ y: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                      <ArrowRight className="rotate-90 w-5 h-5" />
+                    </motion.div>
+                  </div>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em]">Scroll to start</span>
+                </motion.div>
               </div>
 
-              <h3 className="text-3xl md:text-4xl font-black text-black tracking-tight mb-3 uppercase">
-                Upload Your Manifest
-              </h3>
-              <p className="text-black/50 text-base md:text-lg max-w-md mb-8 font-medium">
-                Upload your manifest and we&apos;ll handle the rest. All
-                protocols are securely parsed and integrated automatically.
-              </p>
-
-              <button className="bg-black text-white px-10 py-4 border-4 border-black font-black tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-pink hover:text-black hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:translate-x-[6px] active:translate-y-[6px]">
-                Select Manifest File
-              </button>
-
-              <p className="mt-6 text-xs text-black/40 font-bold tracking-widest uppercase">
-                Drag &amp; Drop supported • .JSON, .YAML, .ZIP • MAX 250MB
-              </p>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* ──── PROBLEMS SECTION ──── */}
-        <motion.div
-          initial={{ opacity: 0, y: 60 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          viewport={{ once: true, margin: "-80px" }}
-          className="max-w-6xl mx-auto w-full px-8 py-24 relative z-10"
-        >
-          <div className="mb-16">
-            <span className="inline-block bg-black text-white px-4 py-2 text-xs font-black uppercase tracking-[0.3em] mb-6 rotate-[-1deg]">
-              Why Annexa?
-            </span>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-black uppercase">
-              The{" "}
-              <span className="inline-block px-2 border-4 border-black shadow-brutal-sm rotate-1" style={{ backgroundColor: "#ff90e8" }}>
-                Problem
-              </span>{" "}
-              with
-              <br />
-              Open Source
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {cardData.map((card, i) => (
+              {/* HERO IMAGE WITH RANDOM CLIPPING */}
               <motion.div
-                key={card.tag}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.5,
-                  delay: i * 0.1,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                viewport={{ once: true }}
-                className="border-4 border-black p-8 shadow-brutal hover:translate-x-[6px] hover:translate-y-[6px] hover:shadow-brutal-none transition-all duration-200 cursor-default group"
-                style={{ backgroundColor: card.bgColor }}
+                initial={{ scale: 0.8, opacity: 0, rotate: 5 }}
+                animate={isLoaded ? { scale: 1, opacity: 1, rotate: 0 } : {}}
+                transition={{ delay: 0.7, type: "spring", stiffness: 100, damping: 15 }}
+                className="flex-1 relative w-full aspect-square max-w-[420px]"
               >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="w-14 h-14 bg-white border-3 border-black flex items-center justify-center shadow-brutal-sm group-hover:rotate-12 transition-transform duration-300">
-                    {card.icon}
-                  </div>
-                  <span className="text-[11px] font-black tracking-widest text-black/60 bg-white/60 px-3 py-1 border-2 border-black">
-                    {card.tag}
-                  </span>
+                <div className="absolute inset-0 bg-black translate-x-3 translate-y-3 clip-brutal-1" />
+                <div className="absolute inset-0 border-4 border-black bg-white overflow-hidden clip-brutal-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="image.png"
+                    alt="Annexa Hero"
+                    className="w-full h-full object-cover object-left grayscale hover:grayscale-0 transition-all duration-700"
+                  />
                 </div>
-                <h3 className="text-lg font-black tracking-tight text-black uppercase mb-3">
-                  {card.title}
-                </h3>
-                <p className="text-black/70 text-sm leading-relaxed font-medium">
-                  {card.body}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
 
-        {/* ──── FOOTER ──── */}
-        <footer className="w-full py-12 mt-auto relative z-10 flex flex-col items-center justify-center border-t-4 border-black bg-white">
-          <p className="text-black/40 font-black italic text-base uppercase tracking-wider">
-            &quot;True security lies in rebuilding the foundation.&quot;
-          </p>
-          <div className="flex gap-3 mt-4">
-            <div className="w-4 h-4 bg-brutal-yellow border-2 border-black" />
-            <div className="w-4 h-4 bg-brutal-pink border-2 border-black" />
-            <div className="w-4 h-4 bg-brutal-cyan border-2 border-black" />
-            <div className="w-4 h-4 bg-brutal-green border-2 border-black" />
+                {/* Floating Elements */}
+                <div className="absolute top-[-15px] left-[-15px] w-16 h-16 border-4 border-black bg-brutal-cyan shadow-brutal-sm flex items-center justify-center -rotate-12">
+                  <ShieldCheck strokeWidth={3} size={24} />
+                </div>
+                <div className="absolute bottom-[-5px] right-[-20px] px-3 py-1.5 border-3 border-black bg-brutal-green font-black text-[9px] uppercase tracking-widest rotate-6 shadow-brutal-sm">
+                  VERIFIED.PROTO
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* ──── SECTION 2: UPLOAD (Reveals on scroll) ──── */}
+            <motion.div
+              style={{ opacity: uploadOpacity, y: uploadY, scale: uploadScale }}
+              className="absolute inset-0 flex flex-col items-center justify-center px-8 pointer-events-auto"
+            >
+              <div
+                className={`w-full max-w-3xl bg-white border-6 ${isDragging
+                  ? "border-brutal-cyan translate-x-[4px] translate-y-[4px] shadow-brutal-none"
+                  : "border-black shadow-brutal-lg"
+                  } p-12 md:p-16 flex flex-col items-center justify-center text-center transition-all duration-200 cursor-pointer group relative`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setIsDragging(false); }}
+              >
+                {/* Visual Flair */}
+                <div className="absolute top-[-30px] left-[-30px] w-20 h-20 border-3 border-black bg-brutal-yellow flex items-center justify-center shadow-brutal-sm rotate-[-15deg]">
+                  <Upload size={32} strokeWidth={3} />
+                </div>
+                <div className="absolute bottom-[-15px] right-[10%] px-5 py-2.5 border-3 border-black bg-brutal-pink font-black text-[10px] uppercase tracking-[0.3em] rotate-[5deg] shadow-brutal-sm">
+                  Drop it here ✦
+                </div>
+
+                <h3 className="text-4xl md:text-5xl lg:text-7xl font-black text-black tracking-tighter mb-4 uppercase leading-none">
+                  Unleash your<br />manifest
+                </h3>
+                <p className="text-black/50 text-base md:text-lg lg:text-xl max-w-xl mb-10 font-bold leading-tight">
+                  Drag and drop your protocols. Our isolated agents will parse, abstract, and rebuild your implementation in real-time.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+                  <button className="flex-1 bg-black text-white px-8 py-5 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-cyan hover:text-black hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95">
+                    Select File
+                  </button>
+                  <div className="hidden sm:flex items-center justify-center px-6 border-4 border-black bg-white shadow-brutal-sm font-black text-[10px] uppercase">
+                    Max 250MB
+                  </div>
+                </div>
+
+                <div className="mt-10 flex items-center gap-6 opacity-20 filter grayscale scale-90">
+                  <ShieldCheck size={28} />
+                  <Scale size={28} />
+                  <AlertTriangle size={28} />
+                  <Heart size={28} />
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </footer>
-      </main>
+
+          {/* Fixed Bottom Status Bar */}
+          <footer className="h-16 border-t-4 border-black bg-white flex items-center justify-between px-8 z-50 pointer-events-auto">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-brutal-green animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-black/60">System Ready</span>
+              </div>
+              <div className="hidden md:flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-black/30">Active Agents: 02</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] font-black uppercase tracking-widest text-black/60 italic">"Secure by architecture"</span>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4].map(i => <div key={i} className={`w-3 h-3 border-2 border-black ${i % 2 === 0 ? 'bg-brutal-pink' : 'bg-brutal-cyan'}`} />)}
+              </div>
+            </div>
+          </footer>
+        </main>
+      </div>
     </>
   );
 }

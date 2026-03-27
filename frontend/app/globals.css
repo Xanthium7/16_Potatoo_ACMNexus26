@@ -36,6 +36,10 @@ body {
     box-shadow: 14px 14px 0px 0px rgba(0, 0, 0, 1);
   }
 
+  .shadow-brutal-xl {
+    box-shadow: 20px 20px 0px 0px rgba(0, 0, 0, 1);
+  }
+
   .shadow-brutal-sm {
     box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
   }
@@ -46,5 +50,17 @@ body {
 
   .border-brutal {
     border: 4px solid #000000;
+  }
+
+  .clip-brutal-1 {
+    clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+  }
+
+  .clip-brutal-2 {
+    clip-path: polygon(5% 5%, 95% 0, 100% 90%, 10% 100%, 0 80%);
+  }
+
+  .clip-star {
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   }
 }

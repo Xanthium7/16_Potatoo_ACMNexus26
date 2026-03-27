@@ -12,41 +12,80 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<{message: string, download_url: string} | null>(null);
   const [packageName, setPackageName] = useState("");
+  const [manualPkgName, setManualPkgName] = useState("");
+  const [toast, setToast] = useState<{ message: string, type: 'error' | 'success' } | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = async(e: React.ChangeEvent<HTMLInputElement>) => {
+  const showToast = (message: string, type: 'error' | 'success' = 'error') => {
+      setToast({ message, type });
+      setTimeout(() => setToast(null), 4000);
+  };
+
+  const triggerBuild = async (name: string) => {
+      if (!name) return;
+      
+      try {
+          setIsGenerating(true);
+          setResult(null); // Reset previous result
+          setPackageName(name);
+          
+          const res = await fetch(`http://localhost:8000/generate?package_name=${name}`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+          });
+          
+          if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(errorData.error || `Server Error (${res.status})`);
+          }
+          
+          const data = await res.json();
+          console.log("Generation response:", data);
+          setResult(data);
+      } catch (err: any) {
+          console.error("Build trigger error:", err);
+          showToast(err.message || "Failed to trigger build sequence");
+      } finally {
+          setIsGenerating(false);
+      }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
           setSelectedFile(file);
-          setIsGenerating(true);
-          // You can trigger router.push or API calls here
-
-           const text = await file.text(); 
-          console.log("File content:", text);
-          const package_name = extractPackageName(text);
-          
-          setPackageName(package_name);
-           console.log("Extracted package name:", package_name);
-
-
-           const res = await fetch(`http://localhost:8000/generate?package_name=${package_name}`,{
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-           });
-           const data = await res.json();
-           console.log("Generation response:", data);
-           setResult(data);
-           setIsGenerating(false);
+          try {
+              const text = await file.text();
+              console.log("File content length:", text.length);
+              const pkgName = extractPackageName(text);
+              
+              if (!pkgName) {
+                  throw new Error("Invalid format: Could not find 'name' field in JSON");
+              }
+              
+              await triggerBuild(pkgName);
+          } catch (err: any) {
+              showToast(err.message || "Could not parse selected file");
+          }
       }
       
       // Clear input so the same file can be selected again
       if (e.target) {
           e.target.value = '';
       }
+  };
+
+  const handleManualBuild = () => {
+      const trimmed = manualPkgName.trim();
+      if (!trimmed) {
+          showToast("Please enter a package identifier");
+          return;
+      }
+      triggerBuild(trimmed);
   };
 
   const handleDownload = () => {
@@ -275,7 +314,16 @@ export default function Home() {
                   const file = e.dataTransfer.files?.[0];
                   if (file && file.name.endsWith('.json')) {
                       setSelectedFile(file);
-                      setIsGenerating(true);
+                      file.text().then(text => {
+                          const pkgName = extractPackageName(text);
+                          if (pkgName) {
+                              triggerBuild(pkgName);
+                          } else {
+                              showToast("Missing package name in JSON");
+                          }
+                      }).catch(() => showToast("Failed to read dropped file"));
+                  } else if (file) {
+                      showToast("Only .json manifests are accepted");
                   }
                 }}
               >
@@ -326,25 +374,53 @@ export default function Home() {
                       Unleash your<br />manifest
                     </h3>
                     <p className="text-black/50 text-base md:text-lg lg:text-xl max-w-xl mb-10 font-bold leading-tight">
-                      Drag and drop your protocols. Our isolated agents will parse, abstract, and rebuild your implementation in real-time.
+                      Type your package name or drag and drop your protocols. Our isolated agents will parse, abstract, and rebuild your implementation in real-time.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex-1 bg-black text-white px-8 py-5 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-cyan hover:text-black hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95"
-                      >
-                        Select File
-                      </button>
-                      <input
-                        type="file"
-                        accept=".json"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <div className="hidden sm:flex items-center justify-center px-6 border-4 border-black bg-white shadow-brutal-sm font-black text-[10px] uppercase">
-                        Max 250MB
+                    <div className="flex flex-col gap-6 w-full max-w-sm relative z-10">
+                      {/* Manual Build Row */}
+                      <div className="flex flex-col gap-2">
+                         <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={manualPkgName}
+                              onChange={(e) => setManualPkgName(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleManualBuild()}
+                              placeholder="IDENTIFIER: E.G. EXPRESS"
+                              className="flex-1 bg-white border-4 border-black px-4 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:bg-brutal-yellow transition-all placeholder:text-black/20"
+                            />
+                            <button 
+                              onClick={handleManualBuild}
+                              className="bg-black text-white px-6 py-4 border-4 border-black font-black text-[10px] tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-green hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-brutal-none transition-all duration-150 active:scale-95"
+                            >
+                              Build
+                            </button>
+                         </div>
+                      </div>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t-2 border-dashed border-black/20" /></div>
+                        <div className="relative flex justify-center text-[8px] font-black uppercase tracking-widest"><span className="bg-white px-3 text-black/40">Nexus Uplink Option</span></div>
+                      </div>
+
+                      {/* File Upload Row */}
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex-1 bg-white text-black px-8 py-5 border-4 border-black font-black text-xs tracking-widest uppercase shadow-brutal-sm hover:bg-brutal-cyan hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-brutal-none transition-all duration-150 active:scale-95"
+                        >
+                          Select File
+                        </button>
+                        <input
+                          type="file"
+                          accept=".json"
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                        <div className="hidden sm:flex items-center justify-center px-6 border-4 border-black bg-black text-white shadow-brutal-sm font-black text-[10px] uppercase">
+                          JSON ONLY
+                        </div>
                       </div>
                     </div>
 
@@ -412,6 +488,23 @@ export default function Home() {
           </footer>
         </main>
       </div>
+
+      {/* Simple Brutal Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className={`fixed bottom-24 right-8 border-4 border-black p-4 shadow-brutal z-[100] ${toast.type === 'error' ? 'bg-brutal-pink' : 'bg-brutal-green'}`}
+          >
+            <div className="flex items-center gap-3">
+               <AlertTriangle size={18} strokeWidth={3} className="text-black" />
+               <span className="text-[11px] font-black uppercase tracking-widest text-black">{toast.message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -511,10 +511,10 @@ const BrutalSnake = ({ filename }: { filename: string }) => {
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if ((key === "arrowup" || key === "w") && dir.y === 0) setDir({ x: 0, y: -1 });
-      if ((key === "arrowdown" || key === "s") && dir.y === 0) setDir({ x: 0, y: 1 });
-      if ((key === "arrowleft" || key === "a") && dir.x === 0) setDir({ x: -1, y: 0 });
-      if ((key === "arrowright" || key === "d") && dir.x === 0) setDir({ x: 1, y: 0 });
+      if ((key === "w") && dir.y === 0) setDir({ x: 0, y: -1 });
+      if ((key === "s") && dir.y === 0) setDir({ x: 0, y: 1 });
+      if ((key === "a") && dir.x === 0) setDir({ x: -1, y: 0 });
+      if ((key === "d") && dir.x === 0) setDir({ x: 1, y: 0 });
     };
     window.addEventListener("keydown", handleKeys);
     return () => window.removeEventListener("keydown", handleKeys);
@@ -551,19 +551,11 @@ const BrutalSnake = ({ filename }: { filename: string }) => {
       className="flex flex-col items-center justify-center p-4 w-full h-full min-h-[400px]"
     >
       <div className="mb-8 flex flex-col items-center">
-        <h3 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-2">
-          Generating legal code
+        <h3 className="text-4xl md:text-3xl font-black uppercase  text-black mb-2">
+          ANNEX-ation in progress...
         </h3>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] border-2 border-black px-3 py-1 bg-black text-white shadow-brutal-sm">
-            {filename}
-          </span>
-          <div className="flex items-center gap-1.5 px-3 py-1 border-2 border-black bg-brutal-pink/20">
-            <div className="w-2 h-2 rounded-full bg-brutal-pink animate-pulse" />
-            <span className="text-[10px] font-black text-black uppercase tracking-widest">
-              SNAKE_PROTOCOL_V4
-            </span>
-          </div>
+          <span className="text-sm font-bold text-black/40 tracking-tight">Play some snake while we <span className="italic text-black/60">ssssynthesize</span> your code</span>
         </div>
       </div>
 
